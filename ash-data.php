@@ -72,7 +72,6 @@
                             to_char(sub1.sample_time - numtodsinterval(mod(EXTRACT(second FROM cast(sub1.sample_time as timestamp)), 15), 'second'), 'DD.MM.YYYY HH24:MI:SS')
                          order by
                             1";
-
       }
 
       $statement = oci_parse($connect, $query);
@@ -139,6 +138,12 @@
       $query = "with cte as (select " . $start_date . " as start_date from dual)
                   select start_date + level/24/60/60*15 as mm from cte
                   connect by level <= 60*4";
+
+      /*
+      print "<pre>";
+      print $query;
+      print "/<pre>";
+      */
 
       $statement = oci_parse($connect, $query);
       oci_execute($statement);

@@ -2,10 +2,10 @@
 <html>
    <head>
       <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-		<title>ASH</title>
+      <title>ASH</title>
 
-		<script type="text/javascript" src="jquery/jquery-2.1.4.min.js"></script>
-
+      <script type="text/javascript" src="jquery/jquery-2.1.4.min.js"></script>
+      <script type="text/javascript" src="highcharts/highcharts.js"></script>
       <script type="text/javascript">
          var xash;
          var chart;
@@ -18,20 +18,21 @@
             }
 
             $.post('ash-' + name + '.php',
-               {
-                  host:$("#host").val(),
-                  port:$("#port").val(),
-                  service:$("#service").val(),
-                  username:$("#username").val(),
-                  password:$("#password").val(),
-                  startdate:minDate,
-                  enddate:maxDate,
-                  waitclass:waitclass,
-                  eventColors:eventColors
-               },
-              function(data) {
-                 $("#" + name).html("").append(data);
-              });
+                   {
+                      host:        $("#host").val(),
+                      port:        $("#port").val(),
+                      service:     $("#service").val(),
+                      username:    $("#username").val(),
+                      password:    $("#password").val(),
+                      startdate:   minDate,
+                      enddate:     maxDate,
+                      waitclass:   waitclass,
+                      eventColors: eventColors
+                   },
+                   function(data) {
+                      $("#" + name).html("").append(data);
+                   }
+	         );
          }
 
          function clear_outputs() {
@@ -52,15 +53,18 @@
 
          function historicalDays() {
             $.post('ash-dbid.php',
-                  {host:$("#host").val(),
-                   port:$("#port").val(),
-                   service:$("#service").val(),
-                   username:$("#username").val(),
-                   password:$("#password").val(),
-                   dbid:$("#dbid").val()},
-                   function(data) {
+                  {
+                     host:     $("#host").val(),
+                     port:     $("#port").val(),
+                     service:  $("#service").val(),
+                     username: $("#username").val(),
+                     password: $("#password").val(),
+                     dbid:     $("#dbid").val()
+                  },
+                  function(data) {
                      $("#day").html(data);
-                   });
+                  }
+            );
          }
 
          function plot(waitclass) {
@@ -118,7 +122,7 @@
                            }
 
                        });
-                   }(Highcharts));
+                   } (Highcharts));
 
                   chart = new Highcharts.Chart({
                              credits: {
@@ -304,8 +308,6 @@
        </style>
    </head>
 <body style='font-size:12px;font-family: Tahoma,Verdana,Helvetica,sans-serif;'>
-
-<script src="highcharts/highcharts.js"></script>
 
 <table width="100%" border=0>
    <tr style="vertical-align:top" align="left" >
