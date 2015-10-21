@@ -1,8 +1,8 @@
 <?php
    require_once('sql-types.php');
 
-   $host    = $_POST['host'];
-   $port    = $_POST['port'];
+   $host = $_POST['host'];
+   $port = $_POST['port'];
    $service = $_POST['service'];
 
    $connect_string = $host.':'.$port.'/'.$service;
@@ -16,78 +16,55 @@
 
       $start_date = $_POST['startdate'];
       $end_date   = $_POST['enddate'];
-      $query_mod  = "";
+      $query_mod1  = "";
+      $query_mod2  = "";
 
       if (isset($_POST['waitclass'])) {
-         if ($_POST['waitclass'] === 'CPU') {
-            $query_mod = " and wait_class is null";
-         } else {
-            $query_mod = " and wait_class = '" . $_POST['waitclass'] . "'";
-         };
+          $query_mod2 = "event";
+
+          if ($_POST['waitclass'] === 'CPU') {
+              $query_mod1 = " and wait_class is null";
+          } else {
+              $query_mod1 = " and wait_class = '" . $_POST['waitclass'] . "'";
+          };
+      } else {
+          $query_mod2 = "wait_class";
       }
 
       $query = "select count(*) activity
                   from V\$ACTIVE_SESSION_HISTORY
                  where sample_time > to_date('" . $start_date ."', 'DD.MM.YYYY HH24:MI:SS')
-                   and sample_time < to_date('" . $end_date ."', 'DD.MM.YYYY HH24:MI:SS')
-                   ".$query_mod."
+                   and sample_time < to_date('" . $end_date ."', 'DD.MM.YYYY HH24:MI:SS') ".$query_mod1."
                    and sql_id is not null";
 
       $statement = oci_parse($connect, $query);
       oci_execute($statement);
       $nrows = oci_fetch_all($statement, $results);
 
-      $sum_activity=$results['ACTIVITY'][0];
+      $sum_activity = $results['ACTIVITY'][0];
 
-      if (isset($_POST['waitclass'])) {
+      $query = "select h.sql_id, h.sql_opcode, h.n, h.wait_class, h.percent, s.sql_text, sum(executions) executions, round(sum(elapsed_time)/decode(sum(executions),0,1,sum(executions))/1e6,5) avg_time from (
+               select h1.sql_id, h1.sql_opcode, nvl(h2.".$query_mod2.",'CPU') wait_class, round(count(*)/" . $sum_activity ."*100,2) percent, n from (
+                select * from (
+                    select sql_id, sql_opcode, count(*) n from v\$active_session_history
+                     where sample_time > to_date('" . $start_date ."', 'DD.MM.YYYY HH24:MI:SS')
+                       and sample_time < to_date('" . $end_date ."', 'DD.MM.YYYY HH24:MI:SS')
+                       and sql_id is not null ".$query_mod1."
+                     group by sql_id, sql_opcode
+                     order by 3 desc
+                 )  where rownum <= 10 ) h1, v\$active_session_history h2
+                 where h1.sql_id = h2.sql_id ".$query_mod1."
+                   and h2.sample_time > to_date('" . $start_date ."', 'DD.MM.YYYY HH24:MI:SS')
+                   and h2.sample_time < to_date('" . $end_date ."', 'DD.MM.YYYY HH24:MI:SS')
+                 group by h1.sql_id, h1.sql_opcode, nvl(h2.".$query_mod2.",'CPU'), n
+                 ) h, v\$sqlarea s
+                where s.sql_id (+) = h.sql_id
+              group by h.sql_id, h.sql_opcode, h.n, h.wait_class, h.percent, s.sql_text
+              order by n desc, sql_id desc";
 
-         if ($_POST["waitclass"] == 'CPU') {
-            $c = 'is null';
-         } else {
-            $c = "= '" . $_POST["waitclass"] . "'";
-         }
-
-         $query = "select h.sql_id, h.sql_opcode, h.n, h.wait_class, h.percent, s.sql_text, sum(executions) executions, round(sum(elapsed_time)/decode(sum(executions),0,1,sum(executions))/1e6,5) avg_time from (
-                   select h1.sql_id, h1.sql_opcode, nvl(h2.event,'CPU') wait_class, round(count(*)/" . $sum_activity ."*100,2) percent, n from (
-                    select * from (
-                        select sql_id, sql_opcode, count(*) n from v\$active_session_history
-                         where sample_time > to_date('" . $_POST["startdate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                           and sample_time < to_date('" . $_POST["enddate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                           and sql_id is not null
-                           and wait_class " . $c . "
-                         group by sql_id, sql_opcode
-                         order by 3 desc
-                     )  where rownum <= 10 ) h1, v\$active_session_history h2
-                     where h1.sql_id = h2.sql_id
-                       and wait_class " . $c . "
-                       and h2.sample_time > to_date('" . $_POST["startdate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                       and h2.sample_time < to_date('" . $_POST["enddate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                     group by h1.sql_id, h1.sql_opcode, nvl(h2.event,'CPU'), n
-                     ) h, v\$sqlarea s
-                    where s.sql_id (+) = h.sql_id
-                  group by h.sql_id, h.sql_opcode, h.n, h.wait_class, h.percent, s.sql_text
-                  order by n desc, sql_id desc";
-
-      } else {
-          $query = "select h.sql_id, h.sql_opcode, h.n, h.wait_class, h.percent, s.sql_text, sum(executions) executions, round(sum(elapsed_time)/decode(sum(executions),0,1,sum(executions))/1e6,5) avg_time from (
-                      select h1.sql_id, h1.sql_opcode, nvl(h2.wait_class,'CPU') wait_class, round(count(*)/" . $sum_activity ."*100,2) percent, n from (
-                       select * from (
-                           select sql_id, sql_opcode, count(*) n from v\$active_session_history
-                            where sample_time > to_date('" . $_POST["startdate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                              and sample_time < to_date('" . $_POST["enddate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                              and sql_id is not null
-                            group by sql_id, sql_opcode
-                            order by 3 desc
-                        )  where rownum <= 10 ) h1, v\$active_session_history h2
-                        where h1.sql_id = h2.sql_id
-                          and h2.sample_time > to_date('" . $_POST["startdate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                          and h2.sample_time < to_date('" . $_POST["enddate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                        group by h1.sql_id, h1.sql_opcode, nvl(h2.wait_class,'CPU'), n
-                        ) h, v\$sqlarea s
-                       where s.sql_id (+) = h.sql_id
-                     group by h.sql_id, h.sql_opcode, h.n, h.wait_class, h.percent, s.sql_text
-                     order by n desc, sql_id desc";
-      }
+    //   print "<pre>";
+    //   print_r($query);
+    //   print "</pre>";
 
       $start_time = microtime(true);
 
@@ -95,12 +72,6 @@
       oci_execute($statement);
 
       $nrows = oci_fetch_all($statement, $results);
-
-      /*
-      print "<pre>";
-      print_r($query);
-      print "</pre>";
-      */
 
       $top = array();
       for ($i=0; $i<sizeof($results["N"]); $i++) {
@@ -134,13 +105,6 @@
       print "<th align='left' nowrap>&nbsp;&nbsp;Executions</th>";
       print "<th align='left' nowrap>&nbsp;&nbsp;Average Time</th>";
       print "</tr></thead>";
-
-      /*
-      print "<pre>";
-      print_r($top);
-      print "</pre>";
-      */
-      //print $_POST("t");
 
       foreach ($top as $sql) {
          print "<tr>";
