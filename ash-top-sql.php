@@ -13,22 +13,22 @@
    $connect = oci_connect($username, $password, $connect_string);
 
    if ($connect) {
-
+       
       $start_date = $_POST['startdate'];
       $end_date   = $_POST['enddate'];
       $query_mod1  = "";
       $query_mod2  = "";
 
       if (isset($_POST['waitclass'])) {
-          $query_mod2 = "event";
+         $query_mod2 = "event";
 
-          if ($_POST['waitclass'] === 'CPU') {
-              $query_mod1 = " and wait_class is null";
-          } else {
-              $query_mod1 = " and wait_class = '" . $_POST['waitclass'] . "'";
-          };
+         if ($_POST['waitclass'] === 'CPU') {
+             $query_mod1 = " and wait_class is null";
+         } else {
+             $query_mod1 = " and wait_class = '" . $_POST['waitclass'] . "'";
+         };
       } else {
-          $query_mod2 = "wait_class";
+         $query_mod2 = "wait_class";
       }
 
       $query = "select count(*) activity

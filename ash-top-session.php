@@ -1,28 +1,41 @@
 <?
-   $connect = oci_connect($_POST["username"], $_POST["password"], $_POST["host"].':'. $_POST["port"] . '/' . $_POST["service"]);
-   
+   $host = $_POST['host'];
+   $port = $_POST['port'];
+   $service = $_POST['service'];
+
+   $connect_string = $host.':'.$port.'/'.$service;
+
+   $username = $_POST['username'];
+   $password = $_POST['password'];
+
+   $connect = oci_connect($username, $password, $connect_string);
+
    if ($connect) {
-      if (isset($_POST["waitclass"])) {
+      $start_date = $_POST['startdate'];
+      $end_date   = $_POST['enddate'];
+      $query_mod1  = "";
+      $query_mod2  = "";
 
-         if ($_POST["waitclass"] == 'CPU') {
-               $c = 'is null';
-            } else {
-               $c = "= '" . $_POST["waitclass"] . "'";
-         }
+      if (isset($_POST['waitclass'])) {
+         $query_mod2 = "event";
 
-         $query = "select count(*) activity
-                     from V\$ACTIVE_SESSION_HISTORY
-                    where sample_time > to_date('" . $_POST["startdate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                      and sample_time < to_date('" . $_POST["enddate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                      and wait_class " . $c . "
-                      ";
+         if ($_POST['waitclass'] === 'CPU') {
+             $query_mod1 = " and wait_class is null";
+         } else {
+            $query_mod1 = " and wait_class = '" . $_POST['waitclass'] . "'";
+         };
       } else {
-         $query = "select count(*) activity
-                     from V\$ACTIVE_SESSION_HISTORY
-                    where sample_time > to_date('" . $_POST["startdate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                      and sample_time < to_date('" . $_POST["enddate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                      ";
+         $query_mod2 = "wait_class";
       }
+
+      $query = "select count(*) activity
+                  from V\$ACTIVE_SESSION_HISTORY
+                 where sample_time > to_date('" . $start_date ."', 'DD.MM.YYYY HH24:MI:SS')
+                   and sample_time < to_date('" . $end_date ."', 'DD.MM.YYYY HH24:MI:SS') ".$query_mod1;
+
+      // print "<pre>";
+      // print $query;
+      // print "</pre>";
 
       $statement = oci_parse($connect, $query);
       oci_execute($statement);
