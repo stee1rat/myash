@@ -19,13 +19,23 @@
       $query_mod2 = "wait_class";
    }
 
+   // $query = "select count(*) activity
+   //             from V\$ACTIVE_SESSION_HISTORY
+   //            where sample_time > to_date('" . $start_date ."', 'DD.MM.YYYY HH24:MI:SS')
+   //              and sample_time < to_date('" . $end_date ."', 'DD.MM.YYYY HH24:MI:SS') ".$query_mod1."
+   //              and sql_id is not null";
+
    $query = "select count(*) activity
                from V\$ACTIVE_SESSION_HISTORY
-              where sample_time > to_date('" . $start_date ."', 'DD.MM.YYYY HH24:MI:SS')
-                and sample_time < to_date('" . $end_date ."', 'DD.MM.YYYY HH24:MI:SS') ".$query_mod1."
+              where sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
+                and sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS') ".$query_mod1."
                 and sql_id is not null";
 
    $statement = oci_parse($connect, $query);
+
+   oci_bind_by_name($statement, ":start_date", $start_date);
+   oci_bind_by_name($statement, ":end_date", $end_date);
+
    oci_execute($statement);
    $nrows = oci_fetch_all($statement, $results);
 
