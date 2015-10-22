@@ -1,19 +1,10 @@
 <?php
    require_once('sql-types.php');
 
-   $host = $_POST['host'];
-   $port = $_POST['port'];
-   $service = $_POST['service'];
-
-   $connect_string = $host.':'.$port.'/'.$service;
-
-   $username = $_POST['username'];
-   $password = $_POST['password'];
-
-   $connect = oci_connect($username, $password, $connect_string);
+   $connect = oci_connect($_POST["username"], $_POST["password"], $_POST["host"].':'. $_POST["port"] . '/' . $_POST["service"]);
 
    if ($connect) {
-       
+
       $start_date = $_POST['startdate'];
       $end_date   = $_POST['enddate'];
       $query_mod1  = "";
@@ -25,7 +16,7 @@
          if ($_POST['waitclass'] === 'CPU') {
              $query_mod1 = " and wait_class is null";
          } else {
-             $query_mod1 = " and wait_class = '" . $_POST['waitclass'] . "'";
+            $query_mod1 = " and wait_class = '" . $_POST['waitclass'] . "'";
          };
       } else {
          $query_mod2 = "wait_class";
@@ -61,10 +52,6 @@
                 where s.sql_id (+) = h.sql_id
               group by h.sql_id, h.sql_opcode, h.n, h.wait_class, h.percent, s.sql_text
               order by n desc, sql_id desc";
-
-    //   print "<pre>";
-    //   print_r($query);
-    //   print "</pre>";
 
       $start_time = microtime(true);
 

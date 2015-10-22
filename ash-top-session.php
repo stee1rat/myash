@@ -1,14 +1,5 @@
 <?
-   $host = $_POST['host'];
-   $port = $_POST['port'];
-   $service = $_POST['service'];
-
-   $connect_string = $host.':'.$port.'/'.$service;
-
-   $username = $_POST['username'];
-   $password = $_POST['password'];
-
-   $connect = oci_connect($username, $password, $connect_string);
+   $connect = oci_connect($_POST["username"], $_POST["password"], $_POST["host"].':'. $_POST["port"] . '/' . $_POST["service"]);
 
    if ($connect) {
       $start_date = $_POST['startdate'];
@@ -33,65 +24,29 @@
                  where sample_time > to_date('" . $start_date ."', 'DD.MM.YYYY HH24:MI:SS')
                    and sample_time < to_date('" . $end_date ."', 'DD.MM.YYYY HH24:MI:SS') ".$query_mod1;
 
-      // print "<pre>";
-      // print $query;
-      // print "</pre>";
-
       $statement = oci_parse($connect, $query);
       oci_execute($statement);
       $nrows = oci_fetch_all($statement, $results);
 
       $sum_activity=$results["ACTIVITY"][0];
 
-      if (isset($_POST["waitclass"])) {
+      $query = "select h.*, u.username from (
+                  select h1.session_id || ',' ||  h1.session_serial# session_id, h2.program, nvl(h2.".$query_mod2.",'CPU') wait_class, user_id, round(count(*)/" . $sum_activity ."*100,2) percent, n from (
+                    select * from (
+                        select session_id, session_serial#, count(*) n from v\$active_session_history
+                         where sample_time > to_date('" . $start_date ."', 'DD.MM.YYYY HH24:MI:SS')
+                           and sample_time < to_date('" . $end_date ."', 'DD.MM.YYYY HH24:MI:SS') ".$query_mod1."
+                         group by session_id, session_serial#
+                         order by 3 desc
+                     )  where rownum <= 10 ) h1, v\$active_session_history h2
+                     where h1.session_id = h2.session_id
+                       and h1.session_serial# = h2.session_serial#
+                       and sample_time > to_date('" . $start_date ."', 'DD.MM.YYYY HH24:MI:SS')
+                       and sample_time < to_date('" . $end_date ."', 'DD.MM.YYYY HH24:MI:SS')".$query_mod1."
+                     group by h1.session_id, h1.session_serial#, h2.program, nvl(h2.".$query_mod2.",'CPU'), n, user_id) h, dba_users u
+                  where u.user_id = h.user_id
+                  order by n desc, session_id desc";
 
-         if ($_POST["waitclass"] == 'CPU') {
-            $c = 'is null';
-         } else {
-            $c = "= '" . $_POST["waitclass"] . "'";
-         }
-         $query = "select h.*, u.username from (
-                     select h1.session_id || ',' ||  h1.session_serial# session_id, h2.program, nvl(h2.event,'CPU') wait_class, user_id, round(count(*)/" . $sum_activity ."*100,2) percent, n from (
-                       select * from (
-                           select session_id, session_serial#, count(*) n from v\$active_session_history
-                            where sample_time > to_date('" . $_POST["startdate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                              and sample_time < to_date('" . $_POST["enddate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                              and wait_class " . $c . "
-                            group by session_id, session_serial#
-                            order by 3 desc
-                        )  where rownum <= 10 ) h1, v\$active_session_history h2
-                        where h1.session_id = h2.session_id
-                          and h1.session_serial# = h2.session_serial#
-                          and sample_time > to_date('" . $_POST["startdate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                          and sample_time < to_date('" . $_POST["enddate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                          and wait_class " . $c . "
-                        group by h1.session_id, h1.session_serial#, h2.program, nvl(h2.event,'CPU'), n, user_id) h, dba_users u
-                     where u.user_id = h.user_id
-                     order by n desc, session_id desc";
-        } else {
-         $query = "select h.*, u.username from (
-                     select h1.session_id || ',' ||  h1.session_serial# session_id, h2.program, nvl(h2.wait_class,'CPU') wait_class, user_id, round(count(*)/" . $sum_activity ."*100,2) percent, n from (
-                       select * from (
-                           select session_id, session_serial#, count(*) n from v\$active_session_history
-                            where sample_time > to_date('" . $_POST["startdate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                              and sample_time < to_date('" . $_POST["enddate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                            group by session_id, session_serial#
-                            order by 3 desc
-                        )  where rownum <= 10 ) h1, v\$active_session_history h2
-                        where h1.session_id = h2.session_id
-                          and h1.session_serial# = h2.session_serial#
-                          and sample_time > to_date('" . $_POST["startdate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                          and sample_time < to_date('" . $_POST["enddate"] ."', 'DD.MM.YYYY HH24:MI:SS')
-                        group by h1.session_id, h1.session_serial#, h2.program, nvl(h2.wait_class,'CPU'), n, user_id) h, dba_users u
-                     where u.user_id = h.user_id
-                     order by n desc, session_id desc";
-      }
-
-     /*
-      print "<pre>";
-      print $query . "<br>";
-      print "</pre>";
-      */
       $start_time = microtime(true);
       $statement = oci_parse($connect, $query);
       oci_execute($statement);
@@ -105,9 +60,6 @@
          if (!isset($top[$results["SESSION_ID"][$i]]["SESSION_ID"])) {
             $top[$results["SESSION_ID"][$i]]["SESSION_ID"] = $results["SESSION_ID"][$i];
          }
-        /* if (!isset($top[$results["SESSION_ID"][$i]]["SQL_OPCODE"])) {
-            $top[$results["SESSION_ID"][$i]]["SQL_OPCODE"] = $results["SQL_OPCODE"][$i];
-         }*/
          if (!isset($top[$results["SESSION_ID"][$i]]["USERNAME"])) {
             $top[$results["SESSION_ID"][$i]]["USERNAME"] = $results["USERNAME"][$i];
          }
@@ -118,11 +70,6 @@
          $top[$results["SESSION_ID"][$i]]["WAIT_CLASS"][$results["WAIT_CLASS"][$i]] = $results["PERCENT"][$i];
       }
 
-      /*
-      print "<pre>";
-      print_r($top);
-      print "</pre>";
-      */
       print "<table  class='output'>";
       print "<thead>";
       print "<tr><th align='left' nowrap>SID,Serial#&nbsp;&nbsp;</th>";
