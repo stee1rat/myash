@@ -19,12 +19,6 @@
       $query_mod2 = "wait_class";
    }
 
-   // $query = "select count(*) activity
-   //             from V\$ACTIVE_SESSION_HISTORY
-   //            where sample_time > to_date('" . $start_date ."', 'DD.MM.YYYY HH24:MI:SS')
-   //              and sample_time < to_date('" . $end_date ."', 'DD.MM.YYYY HH24:MI:SS') ".$query_mod1."
-   //              and sql_id is not null";
-
    $query = "select count(*) activity
                from V\$ACTIVE_SESSION_HISTORY
               where sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
@@ -42,18 +36,18 @@
    $sum_activity = $results['ACTIVITY'][0];
 
    $query = "select h.sql_id, h.sql_opcode, h.n, h.wait_class, h.percent, s.sql_text, sum(executions) executions, round(sum(elapsed_time)/decode(sum(executions),0,1,sum(executions))/1e6,5) avg_time from (
-            select h1.sql_id, h1.sql_opcode, nvl(h2.".$query_mod2.",'CPU') wait_class, round(count(*)/" . $sum_activity ."*100,2) percent, n from (
+            select h1.sql_id, h1.sql_opcode, nvl(h2.".$query_mod2.",'CPU') wait_class, round(count(*)/:sum_activity*100,2) percent, n from (
              select * from (
                  select sql_id, sql_opcode, count(*) n from v\$active_session_history
-                  where sample_time > to_date('" . $start_date ."', 'DD.MM.YYYY HH24:MI:SS')
-                    and sample_time < to_date('" . $end_date ."', 'DD.MM.YYYY HH24:MI:SS')
+                  where sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
+                    and sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
                     and sql_id is not null ".$query_mod1."
                   group by sql_id, sql_opcode
                   order by 3 desc
               )  where rownum <= 10 ) h1, v\$active_session_history h2
               where h1.sql_id = h2.sql_id ".$query_mod1."
-                and h2.sample_time > to_date('" . $start_date ."', 'DD.MM.YYYY HH24:MI:SS')
-                and h2.sample_time < to_date('" . $end_date ."', 'DD.MM.YYYY HH24:MI:SS')
+                and h2.sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
+                and h2.sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
               group by h1.sql_id, h1.sql_opcode, nvl(h2.".$query_mod2.",'CPU'), n
               ) h, v\$sqlarea s
              where s.sql_id (+) = h.sql_id
@@ -63,6 +57,11 @@
    $start_time = microtime(true);
 
    $statement = oci_parse($connect, $query);
+
+   oci_bind_by_name($statement, ":start_date", $start_date);
+   oci_bind_by_name($statement, ":end_date", $end_date);
+   oci_bind_by_name($statement, ":sum_activity", $sum_activity);
+
    oci_execute($statement);
 
    $nrows = oci_fetch_all($statement, $results);
