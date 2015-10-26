@@ -1,5 +1,5 @@
 <?php
-   require_once('ash-connect.php');
+   include('ash-connect.php');
 
    $start_date = $_POST['startdate'];
    $end_date   = $_POST['enddate'];
@@ -47,25 +47,17 @@
                order by n desc, session_id desc";
 
    $start_time = microtime(true);
+
    $statement = oci_parse($connect, $query);
    oci_execute($statement);
    $nrows = oci_fetch_all($statement, $results);
 
    $top = array();
    for ($i=0; $i<sizeof($results["N"]); $i++) {
-      if (!isset($top[$results["SESSION_ID"][$i]]["PROGRAM"])) {
-         $top[$results["SESSION_ID"][$i]]["PROGRAM"] = $results["PROGRAM"][$i];
-      }
-      if (!isset($top[$results["SESSION_ID"][$i]]["SESSION_ID"])) {
-         $top[$results["SESSION_ID"][$i]]["SESSION_ID"] = $results["SESSION_ID"][$i];
-      }
-      if (!isset($top[$results["SESSION_ID"][$i]]["USERNAME"])) {
-         $top[$results["SESSION_ID"][$i]]["USERNAME"] = $results["USERNAME"][$i];
-      }
-      if (!isset($top[$results["SESSION_ID"][$i]]["PERCENT_TOTAL"])) {
-         $top[$results["SESSION_ID"][$i]]["PERCENT_TOTAL"] = $results["N"][$i]/$sum_activity*100;
-      }
-
+      $top[$results["SESSION_ID"][$i]]["PROGRAM"] = $results["PROGRAM"][$i];
+      $top[$results["SESSION_ID"][$i]]["SESSION_ID"] = $results["SESSION_ID"][$i];
+      $top[$results["SESSION_ID"][$i]]["USERNAME"] = $results["USERNAME"][$i];
+      $top[$results["SESSION_ID"][$i]]["PERCENT_TOTAL"] = $results["N"][$i]/$sum_activity*100;
       $top[$results["SESSION_ID"][$i]]["WAIT_CLASS"][$results["WAIT_CLASS"][$i]] = $results["PERCENT"][$i];
    }
 
@@ -97,7 +89,9 @@
       print "<td nowrap>". $session["PROGRAM"] . "</td>";
       print "</tr>";
    }
+
    $end_time = microtime(true);
+
    print "</table>";
    print "<div align='right'><font style='font-family: Tahoma,Verdana,Helvetica,sans-serif;font-size:9px' color='gray'>Total Sample Count: $sum_activity, Returned in: ".round($end_time - $start_time,2) . "s</font></div>";
 ?>

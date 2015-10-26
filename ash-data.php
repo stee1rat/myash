@@ -1,5 +1,5 @@
 <?php
-   require_once('ash-connect.php');
+   include('ash-connect.php');
 
    $query = "alter session set nls_date_format = 'DD.MM.YYYY HH24:MI:SS'";
    $statement = oci_parse($connect, $query);

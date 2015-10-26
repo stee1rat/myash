@@ -1,6 +1,6 @@
 <?php
-   require_once('ash-connect.php');
-   require_once('sql-types.php');
+   include('ash-connect.php');
+   include('sql-types.php');
 
    $start_date = $_POST['startdate'];
    $end_date   = $_POST['enddate'];
@@ -68,25 +68,12 @@
 
    $top = array();
    for ($i=0; $i<sizeof($results["N"]); $i++) {
-      if (!isset($top[$results["SQL_ID"][$i]]["TEXT"])) {
-         $top[$results["SQL_ID"][$i]]["TEXT"] = $results["SQL_TEXT"][$i];
-      }
-      if (!isset($top[$results["SQL_ID"][$i]]["SQL_ID"])) {
-         $top[$results["SQL_ID"][$i]]["SQL_ID"] = $results["SQL_ID"][$i];
-      }
-      if (!isset($top[$results["SQL_ID"][$i]]["SQL_OPCODE"])) {
-         $top[$results["SQL_ID"][$i]]["SQL_OPCODE"] = $results["SQL_OPCODE"][$i];
-      }
-      if (!isset($top[$results["SQL_ID"][$i]]["AVG_TIME"])) {
-         $top[$results["SQL_ID"][$i]]["AVG_TIME"] = $results["AVG_TIME"][$i];
-      }
-      if (!isset($top[$results["SQL_ID"][$i]]["EXECUTIONS"])) {
-         $top[$results["SQL_ID"][$i]]["EXECUTIONS"] = $results["EXECUTIONS"][$i];
-      }
-      if (!isset($top[$results["SQL_ID"][$i]]["PERCENT_TOTAL"])) {
-         $top[$results["SQL_ID"][$i]]["PERCENT_TOTAL"] = $results["N"][$i]/$sum_activity*100;
-      }
-
+      $top[$results["SQL_ID"][$i]]["TEXT"] = $results["SQL_TEXT"][$i];
+      $top[$results["SQL_ID"][$i]]["SQL_ID"] = $results["SQL_ID"][$i];
+      $top[$results["SQL_ID"][$i]]["SQL_OPCODE"] = $results["SQL_OPCODE"][$i];
+      $top[$results["SQL_ID"][$i]]["AVG_TIME"] = $results["AVG_TIME"][$i];
+      $top[$results["SQL_ID"][$i]]["EXECUTIONS"] = $results["EXECUTIONS"][$i];
+      $top[$results["SQL_ID"][$i]]["PERCENT_TOTAL"] = $results["N"][$i]/$sum_activity*100;
       $top[$results["SQL_ID"][$i]]["WAIT_CLASS"][$results["WAIT_CLASS"][$i]] = $results["PERCENT"][$i];
    }
 

@@ -1,5 +1,5 @@
 <?php
-   require_once('ash-connect.php');
+   include('ash-connect.php');
 
    if (!isset($_POST["dbid"])) {
       $query = "select dbid from v\$database";
