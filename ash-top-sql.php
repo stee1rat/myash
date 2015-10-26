@@ -1,39 +1,13 @@
 <?php
+   // Connect to the database and define $connect variable
    include('ash-connect.php');
+
+   // Define $sum_activity, $start_date, $end_date, $query_mod1 and $query_mod2 variables
+   $top_sql = true;
+   include('ash-top-activity.php');
+
+   // Define sum_activity function
    include('sql-types.php');
-
-   $start_date = $_POST['startdate'];
-   $end_date   = $_POST['enddate'];
-   $query_mod1  = "";
-   $query_mod2  = "";
-
-   if (isset($_POST['waitclass'])) {
-      $query_mod2 = "event";
-
-      if ($_POST['waitclass'] === 'CPU') {
-          $query_mod1 = " and wait_class is null";
-      } else {
-         $query_mod1 = " and wait_class = '" . $_POST['waitclass'] . "'";
-      };
-   } else {
-      $query_mod2 = "wait_class";
-   }
-
-   $query = "select count(*) activity
-               from V\$ACTIVE_SESSION_HISTORY
-              where sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-                and sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS') ".$query_mod1."
-                and sql_id is not null";
-
-   $statement = oci_parse($connect, $query);
-
-   oci_bind_by_name($statement, ":start_date", $start_date);
-   oci_bind_by_name($statement, ":end_date", $end_date);
-
-   oci_execute($statement);
-   $nrows = oci_fetch_all($statement, $results);
-
-   $sum_activity = $results['ACTIVITY'][0];
 
    $query = "select h.sql_id, h.sql_opcode, h.n, h.wait_class, h.percent, s.sql_text, sum(executions) executions, round(sum(elapsed_time)/decode(sum(executions),0,1,sum(executions))/1e6,5) avg_time from (
             select h1.sql_id, h1.sql_opcode, nvl(h2.".$query_mod2.",'CPU') wait_class, round(count(*)/:sum_activity*100,2) percent, n from (

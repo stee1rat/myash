@@ -1,33 +1,9 @@
 <?php
+  // Connect to the database and define $connect variable
    include('ash-connect.php');
 
-   $start_date = $_POST['startdate'];
-   $end_date   = $_POST['enddate'];
-   $query_mod1  = "";
-   $query_mod2  = "";
-
-   if (isset($_POST['waitclass'])) {
-      $query_mod2 = "event";
-
-      if ($_POST['waitclass'] === 'CPU') {
-          $query_mod1 = " and wait_class is null";
-      } else {
-         $query_mod1 = " and wait_class = '" . $_POST['waitclass'] . "'";
-      };
-   } else {
-      $query_mod2 = "wait_class";
-   }
-
-   $query = "select count(*) activity
-               from V\$ACTIVE_SESSION_HISTORY
-              where sample_time > to_date('" . $start_date ."', 'DD.MM.YYYY HH24:MI:SS')
-                and sample_time < to_date('" . $end_date ."', 'DD.MM.YYYY HH24:MI:SS') ".$query_mod1;
-
-   $statement = oci_parse($connect, $query);
-   oci_execute($statement);
-   $nrows = oci_fetch_all($statement, $results);
-
-   $sum_activity=$results["ACTIVITY"][0];
+   // Define $sum_activity, $start_date, $end_date, $query_mod1 and $query_mod2 variables
+   include('ash-top-activity.php');
 
    $query = "select h.*, u.username from (
                select h1.session_id || ',' ||  h1.session_serial# session_id, h2.program, nvl(h2.".$query_mod2.",'CPU') wait_class, user_id, round(count(*)/" . $sum_activity ."*100,2) percent, n from (
