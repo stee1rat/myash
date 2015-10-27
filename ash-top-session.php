@@ -28,6 +28,10 @@
    oci_execute($statement);
    $nrows = oci_fetch_all($statement, $results);
 
+   // print "<pre>";
+   // print_r($results);
+   // print "</pre>";
+
    $top = array();
    for ($i=0; $i<sizeof($results["N"]); $i++) {
       $top[$results["SESSION_ID"][$i]]["PROGRAM"] = $results["PROGRAM"][$i];

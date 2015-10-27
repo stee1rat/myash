@@ -40,6 +40,10 @@
 
    $nrows = oci_fetch_all($statement, $results);
 
+   // print "<pre>";
+   // print_r($results);
+   // print "</pre>";
+
    $top = array();
    for ($i=0; $i<sizeof($results["N"]); $i++) {
       $top[$results["SQL_ID"][$i]]["TEXT"] = $results["SQL_TEXT"][$i];
@@ -50,6 +54,10 @@
       $top[$results["SQL_ID"][$i]]["PERCENT_TOTAL"] = $results["N"][$i]/$sum_activity*100;
       $top[$results["SQL_ID"][$i]]["WAIT_CLASS"][$results["WAIT_CLASS"][$i]] = $results["PERCENT"][$i];
    }
+
+   // print "<pre>";
+   // print_r($top);
+   // print "</pre>";
 
    print "<table class='output'>";
    print "<thead>";
