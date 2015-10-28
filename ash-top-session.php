@@ -24,10 +24,6 @@
 
    $start_time = microtime(true);
 
-   print "<pre>";
-   print_r($query);
-   print "</pre>";
-
    $statement = oci_parse($connect, $query);
 
    oci_bind_by_name($statement, ":start_date", $start_date);
