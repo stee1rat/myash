@@ -6,31 +6,36 @@
    include('ash-top-activity.php');
 
    $query = "select h.*, u.username from (
-               select h1.session_id || ',' ||  h1.session_serial# session_id, h2.program, nvl(h2.".$query_mod2.",'CPU') wait_class, user_id, round(count(*)/" . $sum_activity ."*100,2) percent, n from (
+               select h1.session_id || ',' ||  h1.session_serial# session_id, h2.program, nvl(h2.".$query_mod2.",'CPU') wait_class, user_id, round(count(*)/:sum_activity*100,2) percent, n from (
                  select * from (
                      select session_id, session_serial#, count(*) n from v\$active_session_history
-                      where sample_time > to_date('" . $start_date ."', 'DD.MM.YYYY HH24:MI:SS')
-                        and sample_time < to_date('" . $end_date ."', 'DD.MM.YYYY HH24:MI:SS') ".$query_mod1."
+                      where sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
+                        and sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')".$query_mod1."
                       group by session_id, session_serial#
                       order by 3 desc
                   )  where rownum <= 10 ) h1, v\$active_session_history h2
                   where h1.session_id = h2.session_id
                     and h1.session_serial# = h2.session_serial#
-                    and sample_time > to_date('" . $start_date ."', 'DD.MM.YYYY HH24:MI:SS')
-                    and sample_time < to_date('" . $end_date ."', 'DD.MM.YYYY HH24:MI:SS')".$query_mod1."
+                    and sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
+                    and sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')".$query_mod1."
                   group by h1.session_id, h1.session_serial#, h2.program, nvl(h2.".$query_mod2.",'CPU'), n, user_id) h, dba_users u
                where u.user_id = h.user_id
                order by n desc, session_id desc";
 
    $start_time = microtime(true);
 
+   print "<pre>";
+   print_r($query);
+   print "</pre>";
+
    $statement = oci_parse($connect, $query);
+
+   oci_bind_by_name($statement, ":start_date", $start_date);
+   oci_bind_by_name($statement, ":end_date", $end_date);
+   oci_bind_by_name($statement, ":sum_activity", $sum_activity);
+
    oci_execute($statement);
    $nrows = oci_fetch_all($statement, $results);
-
-   // print "<pre>";
-   // print_r($results);
-   // print "</pre>";
 
    $top = array();
    for ($i=0; $i<sizeof($results["N"]); $i++) {

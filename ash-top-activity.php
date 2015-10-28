@@ -1,6 +1,7 @@
 <?php
    $start_date = $_POST['startdate'];
    $end_date   = $_POST['enddate'];
+
    $query_mod1  = "";
    $query_mod2  = "";
 
@@ -20,6 +21,7 @@
             "  from v\$active_session_history\n" .
             " where sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')\n" .
             "   and sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS') ".$query_mod1;
+
 
    if (isset($top_sql)) {
      $predicates[] = "\n   and sql_id is not null";
