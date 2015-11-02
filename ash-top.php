@@ -3,7 +3,7 @@
    include('ash-connect.php');
 
    // Define $query_mod1 and $query_mod2 variables
-   include ('ash-query-mods.php');
+   include('ash-query-mods.php');
 
    // Define get_sqltype function for top-sql table
    if ($_POST['type'] === 'top-sql') {
@@ -34,25 +34,38 @@
    $sum_activity = $results['ACTIVITY'][0];
 
    if ($_POST['type'] === 'top-sql') {
-      $query = "select h.sql_id, h.sql_opcode, h.n, h.wait_class, h.percent, s.sql_text, sum(executions) executions, round(sum(elapsed_time)/decode(sum(executions),0,1,sum(executions))/1e6,5) avg_time from (
-               select h1.sql_id, h1.sql_opcode, nvl(h2.".$query_mod2.",'CPU') wait_class, round(count(*)/:sum_activity*100,2) percent, n from (
-                select * from (
-                    select sql_id, sql_opcode, count(*) n from v\$active_session_history
-                     where sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-                       and sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
-                       and sql_id is not null ".$query_mod1."
-                     group by sql_id, sql_opcode
-                     order by 3 desc
-                 )  where rownum <= 10 ) h1, v\$active_session_history h2
-                 where h1.sql_id = h2.sql_id ".$query_mod1."
-                   and h2.sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-                   and h2.sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
-                 group by h1.sql_id, h1.sql_opcode, nvl(h2.".$query_mod2.",'CPU'), n
-                 ) h, v\$sqlarea s
-                where s.sql_id (+) = h.sql_id
-              group by h.sql_id, h.sql_opcode, h.n, h.wait_class, h.percent, s.sql_text
-              order by n desc, sql_id desc";
-   } elseif ($_POST['type'] === 'top-session') {
+
+      $query = <<<SQL
+         SELECT h.sql_id,h.sql_opcode,h.n,h.wait_class,h.percent,s.sql_text,sum(executions) executions,
+                Round(sum(elapsed_time)/DECODE(sum(executions),0,1,sum(executions))/1e6,5) avg_time
+           FROM (SELECT h1.sql_id, h1.sql_opcode, NVL(h2.{$query_mod2},'CPU') wait_class, Round(Count(*)/:sum_activity*100,2) PERCENT, n
+                   FROM (SELECT *
+                           FROM (SELECT sql_id, sql_opcode, Count(*) n
+                                   FROM v\$active_session_history
+                                  WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
+                                    AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
+                                    AND sql_id IS NOT NULL {$query_mod1}
+                                  GROUP BY sql_id, sql_opcode
+                                  ORDER BY 3 DESC)
+                          WHERE rownum <= 10 ) h1,
+                         v\$active_session_history h2
+                   WHERE h1.sql_id = h2.sql_id {$query_mod1}
+                     AND h2.sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
+                     AND h2.sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
+                   GROUP BY h1.sql_id, h1.sql_opcode, nvl(h2.{$query_mod2},'CPU'), n) h,
+                  v\$sqlarea s
+          WHERE s.sql_id (+) = h.sql_id
+          GROUP BY h.sql_id, h.sql_opcode, h.n, h.wait_class, h.PERCENT, s.sql_text
+          ORDER BY n DESC, sql_id DESC
+SQL;
+   }
+
+   print "<pre>";
+   print_r($query);
+   print "</pre>";
+
+   if ($_POST['type'] === 'top-session') {
+
       $query = "select h.*, u.username from (
                   select h1.session_id || ',' ||  h1.session_serial# session_id, h2.program, nvl(h2.".$query_mod2.",'CPU') wait_class, user_id, round(count(*)/:sum_activity*100,2) percent, n from (
                     select * from (
@@ -129,16 +142,16 @@
       } elseif ($_POST['type'] === 'top-session') {
          print "<td>".$position["SESSION_ID"] . "</td>";
       }
-      print "<td>";
 
+      print "<td>";
       print "<table width='100%'><tr>";
       print "<td width='100%'>";
       foreach ($position["WAIT_CLASS"] as $key => $value) {
          $bg = $_POST["eventColors"][$key];
          print "<div style='background:$bg;width:$value%;float:left;'>&nbsp;</div>";
       }
-      print "</td><td>";
-      print "<div style=''>".round($position["PERCENT_TOTAL"],2). "%</div></td>";
+      print "</td>";
+      print "<td><div style=''>".round($position["PERCENT_TOTAL"],2). "%</div></td>";
       print "</td>";
       print "</tr></table>";
 

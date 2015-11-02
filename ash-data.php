@@ -3,7 +3,7 @@
    include('ash-connect.php');
 
    // Define $query_mod1 and $query_mod2 variables
-   include ('ash-query-mods.php');
+   include('ash-query-mods.php');
 
    $query = "alter session set nls_date_format = 'DD.MM.YYYY HH24:MI:SS'";
    $statement = oci_parse($connect, $query);
@@ -167,7 +167,6 @@
       array_push($options['series'], $series);
    }
 
-   $options['instance'] = '';
    $options['instance'] = $instance["INSTANCE"];
 
    print json_encode($options);
