@@ -17,17 +17,19 @@
                eventColors[chart.legend.allItems[i]["name"]] = chart.legend.allItems[i]["color"];
             }
 
-            $.post('ash-' + name + '.php',
+            //$.post('ash-' + name + '.php',
+            $.post('ash-top.php',
                    {
-                      host:        $("#host").val(),
-                      port:        $("#port").val(),
-                      service:     $("#service").val(),
-                      username:    $("#username").val(),
-                      password:    $("#password").val(),
-                      startdate:   minDate,
-                      enddate:     maxDate,
-                      waitclass:   waitclass,
-                      eventColors: eventColors
+                      "type": name,
+                      "host": $("#host").val(),
+                      "port": $("#port").val(),
+                      "service": $("#service").val(),
+                      "username": $("#username").val(),
+                      "password": $("#password").val(),
+                      "startdate": minDate,
+                      "enddate": maxDate,
+                      "waitclass": waitclass,
+                      "eventColors": eventColors
                    },
                    function(data) {
                       $("#" + name).html("").append(data);
