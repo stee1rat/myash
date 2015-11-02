@@ -34,7 +34,6 @@
    $sum_activity = $results['ACTIVITY'][0];
 
    if ($_POST['type'] === 'top-sql') {
-
       $query = <<<SQL
          SELECT h.sql_id,h.sql_opcode,h.n,h.wait_class,h.percent,s.sql_text,sum(executions) executions,
                 Round(sum(elapsed_time)/DECODE(sum(executions),0,1,sum(executions))/1e6,5) avg_time
@@ -48,40 +47,41 @@
                                   GROUP BY sql_id, sql_opcode
                                   ORDER BY 3 DESC)
                           WHERE rownum <= 10 ) h1,
-                         v\$active_session_history h2
+                        v\$active_session_history h2
                    WHERE h1.sql_id = h2.sql_id {$query_mod1}
                      AND h2.sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
                      AND h2.sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
                    GROUP BY h1.sql_id, h1.sql_opcode, nvl(h2.{$query_mod2},'CPU'), n) h,
-                  v\$sqlarea s
+                v\$sqlarea s
           WHERE s.sql_id (+) = h.sql_id
           GROUP BY h.sql_id, h.sql_opcode, h.n, h.wait_class, h.PERCENT, s.sql_text
           ORDER BY n DESC, sql_id DESC
 SQL;
    }
 
-   print "<pre>";
-   print_r($query);
-   print "</pre>";
-
    if ($_POST['type'] === 'top-session') {
-
-      $query = "select h.*, u.username from (
-                  select h1.session_id || ',' ||  h1.session_serial# session_id, h2.program, nvl(h2.".$query_mod2.",'CPU') wait_class, user_id, round(count(*)/:sum_activity*100,2) percent, n from (
-                    select * from (
-                        select session_id, session_serial#, count(*) n from v\$active_session_history
-                         where sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-                           and sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')".$query_mod1."
-                         group by session_id, session_serial#
-                         order by 3 desc
-                     )  where rownum <= 10 ) h1, v\$active_session_history h2
-                     where h1.session_id = h2.session_id
-                       and h1.session_serial# = h2.session_serial#
-                       and sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-                       and sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')".$query_mod1."
-                     group by h1.session_id, h1.session_serial#, h2.program, nvl(h2.".$query_mod2.",'CPU'), n, user_id) h, dba_users u
-                  where u.user_id = h.user_id
-                  order by n desc, session_id desc";
+      $query = <<<SQL
+         SELECT h.*, u.username 
+           FROM (SELECT h1.session_id || ',' ||  h1.session_serial# session_id, h2.program, nvl(h2.{$query_mod2},'CPU') wait_class, 
+                        user_id, Round(Count(*)/:sum_activity*100,2) PERCENT, n 
+                   FROM (SELECT * 
+                           FROM (SELECT session_id, session_serial#, Count(*) n 
+                                   FROM v\$active_session_history
+                                  WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
+                                    AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS'){$query_mod1}
+                                  GROUP BY session_id, session_serial#
+                                  ORDER BY 3 DESC)  
+                          WHERE rownum <= 10 ) h1, 
+                        v\$active_session_history h2
+                  WHERE h1.session_id = h2.session_id
+                    AND h1.session_serial# = h2.session_serial#
+                    AND sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
+                    AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS'){$query_mod1}
+                  GROUP BY h1.session_id, h1.session_serial#, h2.program, nvl(h2.{$query_mod2},'CPU'), n, user_id) h, 
+               dba_users u
+         WHERE u.user_id = h.user_id
+         ORDER BY n DESC, session_id DESC
+SQL;
    }
 
    $start_time = microtime(true);
