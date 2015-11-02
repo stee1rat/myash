@@ -34,7 +34,8 @@
    $sum_activity = $results['ACTIVITY'][0];
 
    if ($_POST['type'] === 'top-sql') {
-      $query = <<<SQL
+
+$query = <<<SQL
 SELECT h.sql_id,h.sql_opcode,h.n,h.wait_class,h.percent,s.sql_text,sum(executions) executions,
        Round(sum(elapsed_time)/DECODE(sum(executions),0,1,sum(executions))/1e6,5) avg_time
   FROM (SELECT h1.sql_id, h1.sql_opcode, NVL(h2.{$query_mod2},'CPU') wait_class, Round(Count(*)/:sum_activity*100,2) PERCENT, n
@@ -57,31 +58,34 @@ SELECT h.sql_id,h.sql_opcode,h.n,h.wait_class,h.percent,s.sql_text,sum(execution
  GROUP BY h.sql_id, h.sql_opcode, h.n, h.wait_class, h.PERCENT, s.sql_text
  ORDER BY n DESC, sql_id DESC
 SQL;
+
    }
 
    if ($_POST['type'] === 'top-session') {
-      $query = <<<SQL
-SELECT h.*, u.username 
-  FROM (SELECT h1.session_id || ',' ||  h1.session_serial# session_id, h2.program, nvl(h2.{$query_mod2},'CPU') wait_class, 
-               user_id, Round(Count(*)/:sum_activity*100,2) PERCENT, n 
-          FROM (SELECT * 
-                  FROM (SELECT session_id, session_serial#, Count(*) n 
+
+$query = <<<SQL
+SELECT h.*, u.username
+  FROM (SELECT h1.session_id || ',' ||  h1.session_serial# session_id, h2.program, nvl(h2.{$query_mod2},'CPU') wait_class,
+               user_id, Round(Count(*)/:sum_activity*100,2) PERCENT, n
+          FROM (SELECT *
+                  FROM (SELECT session_id, session_serial#, Count(*) n
                           FROM v\$active_session_history
                          WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
                            AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS'){$query_mod1}
                          GROUP BY session_id, session_serial#
-                         ORDER BY 3 DESC)  
-                 WHERE rownum <= 10 ) h1, 
+                         ORDER BY 3 DESC)
+                 WHERE rownum <= 10 ) h1,
                v\$active_session_history h2
          WHERE h1.session_id = h2.session_id
            AND h1.session_serial# = h2.session_serial#
            AND sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
            AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS'){$query_mod1}
-         GROUP BY h1.session_id, h1.session_serial#, h2.program, nvl(h2.{$query_mod2},'CPU'), n, user_id) h, 
+         GROUP BY h1.session_id, h1.session_serial#, h2.program, nvl(h2.{$query_mod2},'CPU'), n, user_id) h,
       dba_users u
 WHERE u.user_id = h.user_id
 ORDER BY n DESC, session_id DESC
 SQL;
+
    }
 
    $start_time = microtime(true);
