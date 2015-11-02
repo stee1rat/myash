@@ -103,9 +103,9 @@
    }
 
    print "<table class='output'>";
-   print "<thead><tr>";
 
-   // Headers
+   // Table headers
+   print "<thead><tr>";
    if ($_POST['type'] === 'top-sql') {
       print "<th align='left'>SQL ID</th>";
       print "<th width='150px' align='left'>Activity</th>";
@@ -118,11 +118,10 @@
       print "<th align='left'>Username&nbsp;&nbsp;</th>";
       print "<th align='left'>Program</th>";
    }
-
    print "</tr></thead>";
 
+   // Rest of the table
    foreach ($top as $position) {
-
       print "<tr>";
 
       if ($_POST['type'] === 'top-sql') {
@@ -153,8 +152,9 @@
       }
       print "</tr>";
    }
+   print "</table>";
+
    $end_time = microtime(true);
 
-   print "</table>";
    print "<div align='right'><font style='font-family: Tahoma,Verdana,Helvetica,sans-serif;font-size:9px' color='gray'>Total Sample Count: $sum_activity, Returned in: ".round($end_time - $start_time,2) . "s</font></div>";
 ?>
