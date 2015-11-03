@@ -77,12 +77,6 @@
                password: $("#password").val(),
                waitclass: waitclass
             }, function(json) {
-               Highcharts.setOptions({
-                  global: {
-                    useUTC: false
-                  }
-               });
-
                chart = new Highcharts.Chart({
                   credits: {
                      "enabled": false
@@ -215,6 +209,12 @@
          }
 
          $(document).ready(function() {
+            Highcharts.setOptions({
+               global: {
+                 useUTC: false
+               }
+            });
+
             plot();
 
             $("#connect").click(function() {
