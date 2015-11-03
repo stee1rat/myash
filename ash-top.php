@@ -34,10 +34,10 @@ SQL;
    if ($_POST['type'] === 'top-sql') {
    $query = <<<SQL
 SELECT h.sql_id,h.sql_opcode,h.n,h.wait_class,h.percent,s.sql_text,sum(executions) executions,
-    Round(sum(elapsed_time)/DECODE(sum(executions),0,1,sum(executions))/1e6,5) avg_time
-  FROM (SELECT h1.sql_id, h1.sql_opcode, NVL(h2.{$query_mod2},'CPU') wait_class, Round(Count(*)/:sum_activity*100,2) PERCENT, n
+    round(sum(elapsed_time)/decode(sum(executions),0,1,sum(executions))/1e6,5) avg_time
+  FROM (SELECT h1.sql_id, h1.sql_opcode, NVL(h2.{$query_mod2},'CPU') wait_class, round(Count(*)/:sum_activity*100,2) PERCENT, n
        FROM (SELECT *
-               FROM (SELECT sql_id, sql_opcode, Count(*) n
+               FROM (SELECT sql_id, sql_opcode, count(*) n
                        FROM v\$active_session_history
                       WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
                         AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
@@ -61,7 +61,7 @@ SQL;
    $query = <<<SQL
 SELECT h.*, u.username
   FROM (SELECT h1.session_id || ',' ||  h1.session_serial# session_id, h2.program, nvl(h2.{$query_mod2},'CPU') wait_class,
-            user_id, Round(Count(*)/:sum_activity*100,2) PERCENT, n
+            user_id, round(count(*)/:sum_activity*100,2) PERCENT, n
        FROM (SELECT *
                FROM (SELECT session_id, session_serial#, Count(*) n
                        FROM v\$active_session_history
@@ -77,8 +77,8 @@ SELECT h.*, u.username
         AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS'){$query_mod1}
       GROUP BY h1.session_id, h1.session_serial#, h2.program, nvl(h2.{$query_mod2},'CPU'), n, user_id) h,
    dba_users u
-WHERE u.user_id = h.user_id
-ORDER BY n DESC, session_id DESC
+ WHERE u.user_id = h.user_id
+ ORDER BY n DESC, session_id DESC
 SQL;
    }
 
@@ -145,8 +145,7 @@ SQL;
       print "<table width='100%'><tr>";
       print "<td width='100%'>";
       foreach ($position["WAIT_CLASS"] as $key => $value) {
-         $bg = $_POST["eventColors"][$key];
-         print "<div style='background:$bg;width:$value%;float:left;'>&nbsp;</div>";
+         print "<div style='background:".$_POST["eventColors"][$key].";width:$value%;float:left;'>&nbsp;</div>";
       }
       print "</td>";
       print "<td><div style=''>".round($position["PERCENT_TOTAL"],2). "%</div></td>";

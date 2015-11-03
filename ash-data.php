@@ -9,11 +9,12 @@
    $statement = oci_parse($connect, $query);
    oci_execute($statement);
 
-   $query = "select 'Connected to: ' || instance_name || '@' || host_name
-                     || ', Version: ' || version instance,
-                    trunc(sysdate - 1/24,'MI') start_date,
-                    nvl(cpu_core_count_current,cpu_count_current) cpu_max
-               from v\$instance, v\$license";
+   $query = <<<SQL
+SELECT 'Connected to: ' || instance_name || '@' || host_name || ', Version: ' || version instance,
+        trunc(sysdate - 1/24,'MI') start_date,
+        nvl(cpu_core_count_current,cpu_count_current) cpu_max
+  FROM v\$instance, v\$license
+SQL;
 
    $statement = oci_parse($connect, $query);
    oci_execute($statement);
@@ -21,43 +22,37 @@
 
    $start_date = $instance["START_DATE"][0];
 
-   $query = "select to_char(sub1.sample_time - numtodsinterval(mod(EXTRACT(
-                               second FROM cast(sub1.sample_time as timestamp)),
-                                  15), 'second'),
-                                    'DD.MM.YYYY HH24:MI:SS') sample_minute,
-                    round(avg(sub1.active_sessions),1) as act_avg
-               from (select sample_id, sample_time,
-                             sum(decode(session_state, 'ON CPU', 1, 0))  as on_cpu,
-                             sum(decode(session_state, 'WAITING', 1, 0)) as waiting,
-                             count(*) as active_sessions
-                        from v\$active_session_history
-                       where sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS') "
-                             . $query_mod1 . "
-                       group by sample_id, sample_time) sub1
-             group by to_char(sub1.sample_time - numtodsinterval(mod(EXTRACT(
-                           second FROM cast(sub1.sample_time as timestamp)),
-                             15), 'second'),
-                              'DD.MM.YYYY HH24:MI:SS')
-             order by 1";
+   $query = <<<SQL
+SELECT to_char(sub1.sample_time - numtodsinterval(mod(extract(second FROM cast(sub1.sample_time AS timestamp)), 15), 'second'), 'DD.MM.YYYY HH24:MI:SS') sample_minute,
+       round(avg(sub1.active_sessions),1) act_avg
+  FROM (SELECT sample_id, sample_time,
+               sum(decode(session_state, 'ON CPU', 1, 0))  on_cpu,
+               sum(decode(session_state, 'WAITING', 1, 0)) waiting,
+               count(*) active_sessions
+         FROM  v\$active_session_history
+        WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS') {$query_mod1}
+        GROUP BY sample_id, sample_time) sub1
+ GROUP BY to_char(sub1.sample_time - numtodsinterval(mod(extract( second FROM cast(sub1.sample_time AS timestamp)), 15), 'second'), 'DD.MM.YYYY HH24:MI:SS')
+ ORDER BY 1
+SQL;
 
    $statement = oci_parse($connect, $query);
    oci_bind_by_name($statement, ":start_date", $start_date);
    oci_execute($statement);
    oci_fetch_all($statement, $sysmetric_history);
 
-   $query = "select to_char(sample_time - numtodsinterval(mod(EXTRACT(second FROM cast(sample_time as timestamp)), 15), 'second'), 'DD.MM.YYYY HH24:MI:SS') sample_time,
-                    wait_class,
-                    round(avg(sessions)) sessions
-               from (select sample_time,
-                            nvl(" . $query_mod2 . ",'CPU') wait_class,
-                            count(*) sessions
-                       from V\$ACTIVE_SESSION_HISTORY
-                      where sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS') " . $query_mod1 . "
-                      group by SAMPLE_TIME,
-                            nvl(" . $query_mod2 . ",'CPU'))
-              group by to_char(sample_time - numtodsinterval(mod(EXTRACT(second FROM cast(sample_time as timestamp)), 15), 'second'), 'DD.MM.YYYY HH24:MI:SS'),
-                    wait_class
-              order by 1,2";
+   $query = <<<SQL
+SELECT to_char(sample_time - numtodsinterval(mod(extract(second FROM Cast(sample_time AS TIMESTAMP)), 15), 'second'), 'DD.MM.YYYY HH24:MI:SS') sample_time,
+       wait_class,
+       round(avg(sessions)) sessions
+  FROM (SELECT sample_time, nvl({$query_mod2},'CPU') wait_class, count(*) sessions
+          FROM v\$active_session_history
+         WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS') {$query_mod1}
+         GROUP BY sample_time, nvl({$query_mod2},'CPU'))
+ GROUP BY to_char(sample_time - numtodsinterval(mod(extract(second FROM cast(sample_time AS timestamp)), 15), 'second'), 'DD.MM.YYYY HH24:MI:SS'),
+          wait_class
+ ORDER BY 1,2
+SQL;
 
    $statement = oci_parse($connect, $query);
    oci_bind_by_name($statement, ":start_date", $start_date);
@@ -69,11 +64,12 @@
    $options['series'] = array();
    $waits = array();
 
-   $wait_classes= array_unique($row["WAIT_CLASS"]);
+   $wait_classes= array_unique($row['WAIT_CLASS']);
 
-   $query = "with cte as (select to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS') as start_date from dual)
-                  select start_date + level/24/60/60*15 as mm from cte
-                  connect by level <= 60*4";
+   $query = <<<SQL
+WITH cte AS (SELECT to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS') AS start_date FROM dual) 
+  SELECT start_date + LEVEL / 24 / 60 / 60 * 15 AS mm FROM cte CONNECT BY LEVEL <= 60 * 4 
+SQL;
 
    $statement = oci_parse($connect, $query);
    oci_bind_by_name($statement, ":start_date", $start_date);
@@ -167,7 +163,7 @@
       array_push($options['series'], $series);
    }
 
-   $options['instance'] = $instance["INSTANCE"];
+   $options['instance'] = $instance['INSTANCE'];
 
    print json_encode($options);
 ?>
