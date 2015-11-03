@@ -70,131 +70,131 @@
             }
 
             xash = $.post('ash-data.php', {
-                  host: $("#host").val(),
-                  port:$ ("#port").val(),
-                  service: $("#service").val(),
-                  username: $("#username").val(),
-                  password: $("#password").val(),
-                  waitclass: waitclass
-               }, function(json) {
-                  Highcharts.setOptions({
-                     global: {
-                       useUTC: false
+               host: $("#host").val(),
+               port:$ ("#port").val(),
+               service: $("#service").val(),
+               username: $("#username").val(),
+               password: $("#password").val(),
+               waitclass: waitclass
+            }, function(json) {
+               Highcharts.setOptions({
+                  global: {
+                    useUTC: false
+                  }
+               });
+
+               chart = new Highcharts.Chart({
+                  credits: {
+                     "enabled": false
+                  },
+                  legend: {
+                     layout: 'vertical',
+                     align: 'right',
+                     verticalAlign: 'middle'
+                  },
+                  tooltip: {
+                     enabled: false
+                  },
+                  chart: {
+                     type: 'area',
+                     renderTo: "container",
+                     zoomType: 'x',
+                     events: {
+                        selection: function(event) {
+                           var d = new Date(0);
+
+                           d.setUTCMilliseconds(json.xAxis.categories[0] + Math.floor(event.xAxis[0].min)*15*1000);
+                           minDate = formatDate(d);
+
+                           var d = new Date(0);
+                           d.setUTCMilliseconds(json.xAxis.categories[0] + Math.floor(event.xAxis[0].max)*15*1000);
+
+                           maxDate = formatDate(d);
+
+                           $("#selected_interval").html("Selected interval: " + minDate + " to " + maxDate);
+
+                           request_table('top-sql',minDate,maxDate,waitclass);
+                           request_table('top-session',minDate,maxDate,waitclass);
+
+                           return false;
+                        }
                      }
-                  });
-
-                  chart = new Highcharts.Chart({
-                     credits: {
-                        "enabled": false
+                  },
+                  exporting: {
+                     enabled: false
+                  },
+                  title: {
+                     text: '',
+                     style: {fontSize:"12px"}
+                  },
+                  subtitle: {
+                     text: ''
+                  },
+                  xAxis: {
+                     type: "datetime",
+                     labels: {
+                        formatter:function() {
+                           return Highcharts.dateFormat('%H:%M', this.value);
+                        }
                      },
-                     legend: {
-                        layout: 'vertical',
-                        align: 'right',
-                        verticalAlign: 'middle'
-                     },
-                     tooltip: {
-                        enabled: false
-                     },
-                     chart: {
-                        type: 'area',
-                        renderTo: "container",
-                        zoomType: 'x',
+                     categories: json.xAxis.categories
+                  },
+                  yAxis: {
+                     title: {
+                        text: 'Active Sessions'
+                     }
+                  },
+                  plotOptions: {
+                     area: {
+                        stacking: 'normal',
+                        lineColor: '#666666',
+                        lineWidth: 0,
+                        marker: {
+                            enabled: false,
+                            lineWidth: 1,
+                            lineColor: '#666666'
+                        },
                         events: {
-                           selection: function(event) {
-                              var d = new Date(0);
-
-                              d.setUTCMilliseconds(json.xAxis.categories[0] + Math.floor(event.xAxis[0].min)*15*1000);
-                              minDate = formatDate(d);
-
-                              var d = new Date(0);
-                              d.setUTCMilliseconds(json.xAxis.categories[0] + Math.floor(event.xAxis[0].max)*15*1000);
-
-                              maxDate = formatDate(d);
-
-                              $("#selected_interval").html("Selected interval: " + minDate + " to " + maxDate);
-
-                              request_table('top-sql',minDate,maxDate,waitclass);
-                              request_table('top-session',minDate,maxDate,waitclass);
+                           legendItemClick: function(event) {
+                              if (waitclass === undefined) {
+                                 plot(event.target.name);
+                              }
 
                               return false;
                            }
                         }
                      },
-                     exporting: {
-                        enabled: false
-                     },
-                     title: {
-                        text: '',
-                        style: {fontSize:"12px"}
-                     },
-                     subtitle: {
-                        text: ''
-                     },
-                     xAxis: {
-                        type: "datetime",
-                        labels: {
-                           formatter:function() {
-                              return Highcharts.dateFormat('%H:%M', this.value);
-                           }
-                        },
-                        categories: json.xAxis.categories
-                     },
-                     yAxis: {
-                        title: {
-                           text: 'Active Sessions'
-                        }
-                     },
-                     plotOptions: {
-                        area: {
-                           stacking: 'normal',
-                           lineColor: '#666666',
-                           lineWidth: 0,
-                           marker: {
-                               enabled: false,
-                               lineWidth: 1,
-                               lineColor: '#666666'
-                           },
-                           events: {
-                              legendItemClick: function(event) {
-                                 if (waitclass === undefined) {
-                                    plot(event.target.name);
-                                 }
-
-                                 return false;
-                              }
-                           }
-                        },
-                        series: {
-                           states: {
-                              hover: {
-                                 enabled: false
-                              }
+                     series: {
+                        states: {
+                           hover: {
+                              enabled: false
                            }
                         }
-                     },
-                     series: json.series
-                  });
-
-                  clear_outputs();
-
-                  var d = new Date(0);
-                  d.setUTCMilliseconds(json.xAxis.categories[0] + chart.xAxis[0].max*15*1000);
-                  maxDate = formatDate(d);
-
-                  var d = new Date(d - 600000);
-                  minDate = formatDate(d);
-
-                  $("#selected_interval").html("Selected interval: " + minDate + " to " + maxDate);
-
-                  $("#instance_name").html(json.instance + ' ');
-                  $("#TD_AWR").css("visibility","visible");
-                  request_table('top-sql',minDate,maxDate,waitclass);
-                  request_table('top-session',minDate,maxDate,waitclass);
-               },
-               "json")
-               .fail(function(err) {
-                  $("#container").html(err.responseText);
+                     }
+                  },
+                  series: json.series
                });
+
+               clear_outputs();
+
+               var d = new Date(0);
+               d.setUTCMilliseconds(json.xAxis.categories[0] + chart.xAxis[0].max*15*1000);
+               maxDate = formatDate(d);
+
+               var d = new Date(d - 600000);
+               minDate = formatDate(d);
+
+               $("#selected_interval").html("Selected interval: " + minDate + " to " + maxDate);
+
+               $("#instance_name").html(json.instance + ' ');
+               $("#TD_AWR").css("visibility","visible");
+               request_table('top-sql',minDate,maxDate,waitclass);
+               request_table('top-session',minDate,maxDate,waitclass);
+            },
+            "json")
+            .fail(function(err) {
+               $("#container").html(err.responseText);
+            });
 
             if (waitclass === undefined) {
                $("#dbid").attr('disabled', true);
