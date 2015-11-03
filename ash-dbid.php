@@ -3,12 +3,15 @@
 
    if (!isset($_POST["dbid"])) {
       $query = "select dbid from v\$database";
+
       $statement = oci_parse($connect, $query);
       oci_execute($statement);
       oci_fetch_all($statement,$result);
+
       $dbid = $result["DBID"][0];
 
       $query = "select distinct dbid, dbid || ' (' || db_name || ')' option_name from dba_hist_database_instance";
+
       $statement = oci_parse($connect, $query);
       oci_execute($statement);
 
@@ -20,11 +23,13 @@
          print ">".$row["OPTION_NAME"]."</option>";
       }
    } else {
-      $query = "select to_char(trunc(begin_interval_time,'DD'), 'DD.MM.YYYY') day
-                  from dba_hist_snapshot
-                 where dbid = ". $_POST["dbid"] ."
-                 group by trunc(begin_interval_time,'DD')
-                 order by trunc(begin_interval_time,'DD') desc";
+      $query = <<<SQL
+SELECT to_char(trunc(begin_interval_time,'DD'), 'DD.MM.YYYY') day 
+  FROM dba_hist_snapshot 
+ WHERE dbid = {$_POST["dbid"]} 
+ GROUP BY trunc(begin_interval_time,'DD') 
+ ORDER BY trunc(begin_interval_time,'DD') DESC
+SQL;
 
       $statement = oci_parse($connect, $query);
       oci_execute($statement);
