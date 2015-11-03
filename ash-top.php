@@ -1,8 +1,9 @@
-<?php
+ <?php
+
    // Connect to the database and define $connect variable
    include('ash-connect.php');
 
-   // Define $query_mod1 and $query_mod2 variables
+   // Define $query_mod1, $query_mod2 and $query_mod3 variables
    include('ash-query-mods.php');
 
    // Define get_sqltype function for top-sql table
@@ -13,15 +14,12 @@
    $start_date = $_POST['startdate'];
    $end_date   = $_POST['enddate'];
 
-   $query = "select count(*) activity\n" .
-            "  from v\$active_session_history\n" .
-            " where sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')\n" .
-            "   and sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS') ".$query_mod1;
-
-   if (isset($top_sql)) {
-     $predicates[] = "\n   and sql_id is not null";
-     $query .= implode ($query, $predicates) ;
-   }
+   $query = <<<SQL
+SELECT count(*) activity
+  FROM v\$active_session_history
+ WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
+   AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS') {$query_mod3}
+SQL;
 
    $statement = oci_parse($connect, $query);
 
@@ -34,58 +32,54 @@
    $sum_activity = $results['ACTIVITY'][0];
 
    if ($_POST['type'] === 'top-sql') {
-
-$query = <<<SQL
+   $query = <<<SQL
 SELECT h.sql_id,h.sql_opcode,h.n,h.wait_class,h.percent,s.sql_text,sum(executions) executions,
-       Round(sum(elapsed_time)/DECODE(sum(executions),0,1,sum(executions))/1e6,5) avg_time
+    Round(sum(elapsed_time)/DECODE(sum(executions),0,1,sum(executions))/1e6,5) avg_time
   FROM (SELECT h1.sql_id, h1.sql_opcode, NVL(h2.{$query_mod2},'CPU') wait_class, Round(Count(*)/:sum_activity*100,2) PERCENT, n
-          FROM (SELECT *
-                  FROM (SELECT sql_id, sql_opcode, Count(*) n
-                          FROM v\$active_session_history
-                         WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-                           AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
-                           AND sql_id IS NOT NULL {$query_mod1}
-                         GROUP BY sql_id, sql_opcode
-                         ORDER BY 3 DESC)
-                 WHERE rownum <= 10 ) h1,
-               v\$active_session_history h2
-          WHERE h1.sql_id = h2.sql_id {$query_mod1}
-            AND h2.sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-            AND h2.sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
-          GROUP BY h1.sql_id, h1.sql_opcode, nvl(h2.{$query_mod2},'CPU'), n) h,
-       v\$sqlarea s
+       FROM (SELECT *
+               FROM (SELECT sql_id, sql_opcode, Count(*) n
+                       FROM v\$active_session_history
+                      WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
+                        AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
+                        AND sql_id IS NOT NULL {$query_mod1}
+                      GROUP BY sql_id, sql_opcode
+                      ORDER BY 3 DESC)
+              WHERE rownum <= 10 ) h1,
+            v\$active_session_history h2
+       WHERE h1.sql_id = h2.sql_id {$query_mod1}
+         AND h2.sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
+         AND h2.sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
+       GROUP BY h1.sql_id, h1.sql_opcode, nvl(h2.{$query_mod2},'CPU'), n) h,
+    v\$sqlarea s
  WHERE s.sql_id (+) = h.sql_id
  GROUP BY h.sql_id, h.sql_opcode, h.n, h.wait_class, h.PERCENT, s.sql_text
  ORDER BY n DESC, sql_id DESC
 SQL;
-
    }
 
    if ($_POST['type'] === 'top-session') {
-
-$query = <<<SQL
+   $query = <<<SQL
 SELECT h.*, u.username
   FROM (SELECT h1.session_id || ',' ||  h1.session_serial# session_id, h2.program, nvl(h2.{$query_mod2},'CPU') wait_class,
-               user_id, Round(Count(*)/:sum_activity*100,2) PERCENT, n
-          FROM (SELECT *
-                  FROM (SELECT session_id, session_serial#, Count(*) n
-                          FROM v\$active_session_history
-                         WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-                           AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS'){$query_mod1}
-                         GROUP BY session_id, session_serial#
-                         ORDER BY 3 DESC)
-                 WHERE rownum <= 10 ) h1,
-               v\$active_session_history h2
-         WHERE h1.session_id = h2.session_id
-           AND h1.session_serial# = h2.session_serial#
-           AND sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-           AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS'){$query_mod1}
-         GROUP BY h1.session_id, h1.session_serial#, h2.program, nvl(h2.{$query_mod2},'CPU'), n, user_id) h,
-      dba_users u
+            user_id, Round(Count(*)/:sum_activity*100,2) PERCENT, n
+       FROM (SELECT *
+               FROM (SELECT session_id, session_serial#, Count(*) n
+                       FROM v\$active_session_history
+                      WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
+                        AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS'){$query_mod1}
+                      GROUP BY session_id, session_serial#
+                      ORDER BY 3 DESC)
+              WHERE rownum <= 10 ) h1,
+            v\$active_session_history h2
+      WHERE h1.session_id = h2.session_id
+        AND h1.session_serial# = h2.session_serial#
+        AND sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
+        AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS'){$query_mod1}
+      GROUP BY h1.session_id, h1.session_serial#, h2.program, nvl(h2.{$query_mod2},'CPU'), n, user_id) h,
+   dba_users u
 WHERE u.user_id = h.user_id
 ORDER BY n DESC, session_id DESC
 SQL;
-
    }
 
    $start_time = microtime(true);
@@ -174,4 +168,5 @@ SQL;
    $end_time = microtime(true);
 
    print "<div align='right'><font style='font-family: Tahoma,Verdana,Helvetica,sans-serif;font-size:9px' color='gray'>Total Sample Count: $sum_activity, Returned in: ".round($end_time - $start_time,2) . "s</font></div>";
+
 ?>
