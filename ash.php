@@ -42,12 +42,18 @@
          }
 
          function formatDate(d) {
-            return ('0' + d.getUTCDate()).slice(-2) + '.' +
-                   ('0' + (d.getUTCMonth() + 1)).slice(-2) + '.' +
-                   d.getUTCFullYear() + ' ' +
-                   ('0' + d.getUTCHours()).slice(-2) + ':' +
-                   ('0' + d.getUTCMinutes()).slice(-2) + ':' +
-                   ('0' + d.getUTCSeconds()).slice(-2);
+            //return ('0' + d.getUTCDate()).slice(-2) + '.' +
+            //       ('0' + (d.getUTCMonth() + 1)).slice(-2) + '.' +
+            //       d.getUTCFullYear() + ' ' +
+            //       ('0' + d.getUTCHours()).slice(-2) + ':' +
+            //       ('0' + d.getUTCMinutes()).slice(-2) + ':' +
+            //       ('0' + d.getUTCSeconds()).slice(-2);
+            return ('0' + d.getDate()).slice(-2) + '.' +
+                   ('0' + (d.getMonth() + 1)).slice(-2) + '.' +
+                   d.getFullYear() + ' ' +
+                   ('0' + d.getHours()).slice(-2) + ':' +
+                   ('0' + d.getMinutes()).slice(-2) + ':' +
+                   ('0' + d.getSeconds()).slice(-2);
          }
 
          function historicalDays() {
@@ -119,6 +125,12 @@
                      });
                   } (Highcharts));
 
+                  Highcharts.setOptions({
+                     global: {
+                       useUTC: false
+                     }
+                  });
+
                   chart = new Highcharts.Chart({
                      credits: {
                         "enabled": false
@@ -138,6 +150,7 @@
                         events: {
                            selection: function(event) {
                               var d = new Date(0);
+
                               d.setUTCMilliseconds(json.xAxis.categories[0] + Math.floor(event.xAxis[0].min)*15*1000);
                               minDate = formatDate(d);
  

@@ -103,7 +103,7 @@ SQL;
    foreach ($dates["MM"] as $date) {
       $datetime=new DateTime($date);
 
-      $datetime->modify('+3 hour');
+      # $datetime->modify('+3 hour');
 
       $xAxis['categories'][] = $datetime->format('U')*1000;
 
