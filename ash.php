@@ -6,6 +6,7 @@
 
       <script type="text/javascript" src="jquery/jquery-2.1.4.min.js"></script>
       <script type="text/javascript" src="highcharts/highcharts.js"></script>
+      <script type="text/javascript" src="highcharts/legend-highlight.js"></script>
 
       <script type="text/javascript">
          var xash;
@@ -76,49 +77,6 @@
                   password: $("#password").val(),
                   waitclass: waitclass
                }, function(json) {
-                  (function (Highcharts) {
-                     var each = Highcharts.each;
-
-                     Highcharts.wrap(Highcharts.Legend.prototype, 'renderItem', function (proceed, item) {
-
-                        proceed.call(this, item);
-
-                        var isPoint = !!item.series,
-                            collection = isPoint ? item.series.points : this.chart.series,
-                            groups = isPoint ? ['graphic'] : ['group', 'markerGroup'],
-                            element = item.legendGroup.element;
-
-                        element.onmouseover = function () {
-                           each(collection, function (seriesItem) {
-                                if (seriesItem !== item) {
-                                    each(groups, function (group) {
-                                        seriesItem[group].animate({
-                                            opacity: 0.25
-                                        }, {
-                                            duration: 150
-                                        });
-                                    });
-                                }
-                            });
-                        }
-
-                        element.onmouseout = function () {
-                           each(collection, function (seriesItem) {
-                                if (seriesItem !== item) {
-                                    each(groups, function (group) {
-                                        seriesItem[group].animate({
-                                            opacity: 1
-                                        }, {
-                                            duration: 50
-                                        });
-                                    });
-                                }
-                            });
-                        }
-
-                     });
-                  } (Highcharts));
-
                   Highcharts.setOptions({
                      global: {
                        useUTC: false
@@ -147,17 +105,17 @@
 
                               d.setUTCMilliseconds(json.xAxis.categories[0] + Math.floor(event.xAxis[0].min)*15*1000);
                               minDate = formatDate(d);
- 
+
                               var d = new Date(0);
                               d.setUTCMilliseconds(json.xAxis.categories[0] + Math.floor(event.xAxis[0].max)*15*1000);
- 
+
                               maxDate = formatDate(d);
- 
+
                               $("#selected_interval").html("Selected interval: " + minDate + " to " + maxDate);
- 
+
                               request_table('top-sql',minDate,maxDate,waitclass);
                               request_table('top-session',minDate,maxDate,waitclass);
- 
+
                               return false;
                            }
                         }
@@ -201,7 +159,7 @@
                                  if (waitclass === undefined) {
                                     plot(event.target.name);
                                  }
- 
+
                                  return false;
                               }
                            }
