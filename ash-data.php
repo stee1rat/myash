@@ -26,8 +26,6 @@ SQL;
 SELECT to_char(sub1.sample_time - numtodsinterval(mod(extract(second FROM cast(sub1.sample_time AS timestamp)), 15), 'second'), 'DD.MM.YYYY HH24:MI:SS') sample_minute,
        round(avg(sub1.active_sessions),1) act_avg
   FROM (SELECT sample_id, sample_time,
-               sum(decode(session_state, 'ON CPU', 1, 0))  on_cpu,
-               sum(decode(session_state, 'WAITING', 1, 0)) waiting,
                count(*) active_sessions
          FROM  v\$active_session_history
         WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS') {$query_mod1}
