@@ -67,8 +67,8 @@ SQL;
    $wait_classes= array_unique($row['WAIT_CLASS']);
 
    $query = <<<SQL
-WITH cte AS (SELECT to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS') AS start_date FROM dual) 
-  SELECT start_date + LEVEL / 24 / 60 / 60 * 15 AS mm FROM cte CONNECT BY LEVEL <= 60 * 4 
+WITH cte AS (SELECT to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS') AS start_date FROM dual)
+  SELECT start_date + LEVEL / 24 / 60 / 60 * 15 AS mm FROM cte CONNECT BY LEVEL <= 60 * 4
 SQL;
 
    $statement = oci_parse($connect, $query);
@@ -101,23 +101,19 @@ SQL;
    }
 
    foreach ($dates["MM"] as $date) {
-      $datetime=new DateTime($date);
-
-      # $datetime->modify('+3 hour');
-
-      $xAxis['categories'][] = $datetime->format('U')*1000;
+      $datetime=DateTime::createFromFormat('d.m.Y H:i:s',$date);
+      #$datetime->modify('+1 hour');
 
       foreach($wait_classes as $wait_class) {
          if (isset($bytime[$date][$wait_class])) {
             $pct = ($bytime[$date][$wait_class]/(int)$bytime[$date]["Overall"])*100;
-            $avg_ses = round($sysmetric_bytime[$date]/100*$pct,2);
-            $waits[$wait_class][] = $avg_ses;
+            $avg_sess = round($sysmetric_bytime[$date]/100*$pct,2);
+            $waits[$wait_class][] = array($datetime->getTimestamp()*1000,$avg_sess);
          } else {
-            $waits[$wait_class][] = 0;
+            $waits[$wait_class][] = array($datetime->getTimestamp()*1000,0);
          }
       }
    }
-   $options['xAxis'] = $xAxis;
 
    foreach($wait_classes as $wait_class) {
       $series = array();

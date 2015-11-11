@@ -41,16 +41,7 @@
             $("#report").html("")
             $("#top-session").html("");
          }
-
-         function formatDate(d) {
-            return ('0' + d.getDate()).slice(-2) + '.' +
-                   ('0' + (d.getMonth() + 1)).slice(-2) + '.' +
-                   d.getFullYear() + ' ' +
-                   ('0' + d.getHours()).slice(-2) + ':' +
-                   ('0' + d.getMinutes()).slice(-2) + ':' +
-                   ('0' + d.getSeconds()).slice(-2);
-         }
-
+         
          function historicalDays() {
             $.post('ash-dbid.php', {
                host: $("#host").val(),
@@ -77,6 +68,12 @@
                password: $("#password").val(),
                waitclass: waitclass
             }, function(json) {
+               Highcharts.setOptions({
+                  global: {
+                    useUTC: false
+                  }
+               });
+
                chart = new Highcharts.Chart({
                   credits: {
                      "enabled": false
@@ -95,21 +92,14 @@
                      zoomType: 'x',
                      events: {
                         selection: function(event) {
-                           var d = new Date(0);
-
-                           d.setUTCMilliseconds(json.xAxis.categories[0] + Math.floor(event.xAxis[0].min)*15*1000);
-                           minDate = formatDate(d);
-
-                           var d = new Date(0);
-                           d.setUTCMilliseconds(json.xAxis.categories[0] + Math.floor(event.xAxis[0].max)*15*1000);
-
-                           maxDate = formatDate(d);
-
+                           minDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', event.xAxis[0].min);
+                           maxDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', event.xAxis[0].max);
+                           
                            $("#selected_interval").html("Selected interval: " + minDate + " to " + maxDate);
-
+                           
                            request_table('top-sql',minDate,maxDate,waitclass);
                            request_table('top-session',minDate,maxDate,waitclass);
-
+                           
                            return false;
                         }
                      }
@@ -130,8 +120,7 @@
                         formatter:function() {
                            return Highcharts.dateFormat('%H:%M', this.value);
                         }
-                     },
-                     categories: json.xAxis.categories
+                     }
                   },
                   yAxis: {
                      title: {
@@ -169,19 +158,16 @@
                   series: json.series
                });
 
-               clear_outputs();
+               clear_outputs();               
 
-               var d = new Date(0);
-               d.setUTCMilliseconds(json.xAxis.categories[0] + chart.xAxis[0].max*15*1000);
-               maxDate = formatDate(d);
-
-               var d = new Date(d - 600000);
-               minDate = formatDate(d);
-
+               minDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', chart.xAxis[0].min);
+               maxDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', chart.xAxis[0].max);
+                           
                $("#selected_interval").html("Selected interval: " + minDate + " to " + maxDate);
 
                $("#instance_name").html(json.instance + ' ');
                $("#TD_AWR").css("visibility","visible");
+               
                request_table('top-sql',minDate,maxDate,waitclass);
                request_table('top-session',minDate,maxDate,waitclass);
             },
@@ -209,12 +195,6 @@
          }
 
          $(document).ready(function() {
-            Highcharts.setOptions({
-               global: {
-                 useUTC: false
-               }
-            });
-
             plot();
 
             $("#connect").click(function() {
