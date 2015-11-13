@@ -2,11 +2,6 @@
    // Connect to the database and define $connect variable
    include('ash-connect.php');
 
-   if (!$connect) {
-      $m = oci_error();
-      trigger_error(htmlentities($m['message']), E_USER_ERROR);
-   }
-
    // Define $query_mod1 and $query_mod2 variables
    include('ash-query-mods.php');
 
@@ -55,13 +50,16 @@ SQL;
    oci_bind_by_name($statement, ":start_date", $start_date);
    oci_execute($statement);
 
-   $waits = array();
-   $avg_sess = array();
    $bytime = array();
    while (($row = oci_fetch_assoc($statement))) {
       if ($row["WAIT_CLASS"] != 'rollup') {
          $bytime[$row["SAMPLE_TIME"]][$row["WAIT_CLASS"]]  = $row["AVG_SES"];
-         $bytime[$row["SAMPLE_TIME"]]["Overall"] = $bytime[$row["SAMPLE_TIME"]]["Overall"] + $row["AVG_SES"];
+
+         if (!isset($bytime[$row["SAMPLE_TIME"]]["Overall"])) {
+            $bytime[$row["SAMPLE_TIME"]]["Overall"]  = $row["AVG_SES"];
+         } else {
+            $bytime[$row["SAMPLE_TIME"]]["Overall"] = $bytime[$row["SAMPLE_TIME"]]["Overall"] + $row["AVG_SES"];
+         }
       } else {
          $bytime[$row["SAMPLE_TIME"]]["AvgSess"] = round($row["SESSIONS"]/$row["SAMPLES"],1);
       }
@@ -75,9 +73,10 @@ SQL;
       }
    }
 
+   $waits = array();
    foreach ($dates["MM"] as $date) {
       $datetime=DateTime::createFromFormat('d.m.Y H:i:s',$date);
-      $datetime->modify('+1 hour');
+      //$datetime->modify('+1 hour');
 
       foreach($wait_classes as $wait_class => $value) {
           if (isset($bytime[$date][$wait_class])) {
@@ -93,7 +92,7 @@ SQL;
    $options = array();
    $options['series'] = array();
    $series = array();
-
+   
    foreach($wait_classes as $wait_class => $value) {
       $series = array();
       $series["name"] = $wait_class;
