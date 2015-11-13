@@ -2,6 +2,11 @@
    // Connect to the database and define $connect variable
    include('ash-connect.php');
 
+   if (!$connect) {
+      $m = oci_error();
+      trigger_error(htmlentities($m['message']), E_USER_ERROR);
+   }
+
    // Define $query_mod1 and $query_mod2 variables
    include('ash-query-mods.php');
 
@@ -23,50 +28,7 @@ SQL;
    $start_date = $instance["START_DATE"][0];
 
    $query = <<<SQL
-SELECT to_char(sub1.sample_time - numtodsinterval(mod(extract(second FROM cast(sub1.sample_time AS timestamp)), 15), 'second'), 'DD.MM.YYYY HH24:MI:SS') sample_minute,
-       round(avg(sub1.active_sessions),1) act_avg
-  FROM (SELECT sample_id, sample_time,
-               count(*) active_sessions
-         FROM  v\$active_session_history
-        WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS') {$query_mod1}
-        GROUP BY sample_id, sample_time) sub1
- GROUP BY to_char(sub1.sample_time - numtodsinterval(mod(extract( second FROM cast(sub1.sample_time AS timestamp)), 15), 'second'), 'DD.MM.YYYY HH24:MI:SS')
- ORDER BY 1
-SQL;
-
-   $statement = oci_parse($connect, $query);
-   oci_bind_by_name($statement, ":start_date", $start_date);
-   oci_execute($statement);
-   oci_fetch_all($statement, $sysmetric_history);
-
-   $query = <<<SQL
-SELECT to_char(sample_time - numtodsinterval(mod(extract(second FROM Cast(sample_time AS TIMESTAMP)), 15), 'second'), 'DD.MM.YYYY HH24:MI:SS') sample_time,
-       wait_class,
-       round(avg(sessions)) sessions
-  FROM (SELECT sample_time, nvl({$query_mod2},'CPU') wait_class, count(*) sessions
-          FROM v\$active_session_history
-         WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS') {$query_mod1}
-         GROUP BY sample_time, nvl({$query_mod2},'CPU'))
- GROUP BY to_char(sample_time - numtodsinterval(mod(extract(second FROM cast(sample_time AS timestamp)), 15), 'second'), 'DD.MM.YYYY HH24:MI:SS'),
-          wait_class
- ORDER BY 1,2
-SQL;
-
-   $statement = oci_parse($connect, $query);
-   oci_bind_by_name($statement, ":start_date", $start_date);
-   oci_execute($statement);
-
-   $nrows = oci_fetch_all($statement, $row);
-
-   $options = array();
-   $options['series'] = array();
-   $waits = array();
-
-   $wait_classes= array_unique($row['WAIT_CLASS']);
-
-   $query = <<<SQL
-WITH cte AS (SELECT to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS') AS start_date FROM dual)
-  SELECT start_date + LEVEL / 24 / 60 / 60 * 15 AS mm FROM cte CONNECT BY LEVEL <= 60 * 4
+SELECT to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS') + LEVEL/24/60/60*15 mm FROM dual CONNECT BY LEVEL <= 60*4
 SQL;
 
    $statement = oci_parse($connect, $query);
@@ -74,46 +36,65 @@ SQL;
    oci_execute($statement);
    oci_fetch_all($statement, $dates);
 
-   $sysmetric_bytime = array();
-   for ($i=0; $i<sizeof($sysmetric_history["SAMPLE_MINUTE"]); $i++) {
-      $sysmetric_bytime[$sysmetric_history["SAMPLE_MINUTE"][$i]] = $sysmetric_history["ACT_AVG"][$i];
-   }
+   $query = <<<SQL
+SELECT to_char(sample_time - numtodsinterval(mod(extract(second FROM Cast(sample_time AS TIMESTAMP)), 15), 'second'), 'DD.MM.YYYY HH24:MI:SS') sample_time,
+       nvl(wait_class,'rollup') wait_class,
+       round(sum(sessions)) sessions,
+       round(avg(sessions)) avg_ses,
+       round(count(distinct sample_time)) samples
+  FROM (SELECT sample_time, nvl({$query_mod2},'CPU') wait_class, count(*) sessions
+          FROM v\$active_session_history
+        WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS') {$query_mod1}
+         GROUP BY sample_time, nvl({$query_mod2},'CPU'))
+GROUP BY ROLLUP(to_char(sample_time - numtodsinterval(mod(extract(second FROM cast(sample_time AS timestamp)), 15), 'second'), 'DD.MM.YYYY HH24:MI:SS'),
+          wait_class)
+ORDER BY 1,2
+SQL;
 
+   $statement = oci_parse($connect, $query);
+   oci_bind_by_name($statement, ":start_date", $start_date);
+   oci_execute($statement);
+
+   $waits = array();
+   $avg_sess = array();
    $bytime = array();
-
-   for ($i=0; $i<sizeof($row["SAMPLE_TIME"]); $i++) {
-      if (!isset($bytime[$row["SAMPLE_TIME"][$i]]["Overall"])) {
-         $bytime[$row["SAMPLE_TIME"][$i]]["Overall"] = $row["SESSIONS"][$i];
+   while (($row = oci_fetch_assoc($statement))) {
+      if ($row["WAIT_CLASS"] != 'rollup') {
+         $bytime[$row["SAMPLE_TIME"]][$row["WAIT_CLASS"]]  = $row["AVG_SES"];
+         $bytime[$row["SAMPLE_TIME"]]["Overall"] = $bytime[$row["SAMPLE_TIME"]]["Overall"] + $row["AVG_SES"];
       } else {
-         $bytime[$row["SAMPLE_TIME"][$i]]["Overall"] = $bytime[$row["SAMPLE_TIME"][$i]]["Overall"] + $row["SESSIONS"][$i];
+         $bytime[$row["SAMPLE_TIME"]]["AvgSess"] = round($row["SESSIONS"]/$row["SAMPLES"],1);
       }
-
-      if (!isset($bytime[$row["SAMPLE_TIME"][$i]]["Count"])) {
-         $bytime[$row["SAMPLE_TIME"][$i]]["Count"] = 1;
-      } else {
-         $bytime[$row["SAMPLE_TIME"][$i]]["Count"] = $bytime[$row["SAMPLE_TIME"][$i]]["Count"] + 1;
-      }
-
-      $bytime[$row["SAMPLE_TIME"][$i]]["AvgSess"] = $sysmetric_bytime[$row["SAMPLE_TIME"][$i]];
-      $bytime[$row["SAMPLE_TIME"][$i]][$row["WAIT_CLASS"][$i]] = $row["SESSIONS"][$i];
    }
 
-   foreach ($dates["MM"] as $date) {
-      $datetime=DateTime::createFromFormat('d.m.Y H:i:s',$date);
-      #$datetime->modify('+1 hour');
-
-      foreach($wait_classes as $wait_class) {
-         if (isset($bytime[$date][$wait_class])) {
-            $pct = ($bytime[$date][$wait_class]/(int)$bytime[$date]["Overall"])*100;
-            $avg_sess = round($sysmetric_bytime[$date]/100*$pct,2);
-            $waits[$wait_class][] = array($datetime->getTimestamp()*1000,$avg_sess);
-         } else {
-            $waits[$wait_class][] = array($datetime->getTimestamp()*1000,0);
+   foreach ($bytime as $date) {
+      foreach ($date as $key => $value) {
+         if ($key != 'Overall' and $key != 'AvgSess') {
+            $wait_classes[$key] = 0;
          }
       }
    }
 
-   foreach($wait_classes as $wait_class) {
+   foreach ($dates["MM"] as $date) {
+      $datetime=DateTime::createFromFormat('d.m.Y H:i:s',$date);
+      $datetime->modify('+1 hour');
+
+      foreach($wait_classes as $wait_class => $value) {
+          if (isset($bytime[$date][$wait_class])) {
+             $pct = ($bytime[$date][$wait_class]/(int)$bytime[$date]["Overall"])*100;
+             $avg_sess = round($bytime[$date]["AvgSess"]/100*$pct,2);
+             $waits[$wait_class][] = array($datetime->getTimestamp()*1000,$avg_sess);
+          } else {
+             $waits[$wait_class][] = array($datetime->getTimestamp()*1000,0);
+          }
+      }
+   }
+
+   $options = array();
+   $options['series'] = array();
+   $series = array();
+
+   foreach($wait_classes as $wait_class => $value) {
       $series = array();
       $series["name"] = $wait_class;
       $series["lineWidth"] = 1;
