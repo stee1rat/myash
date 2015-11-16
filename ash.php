@@ -160,7 +160,7 @@
 
                clear_outputs();               
 
-               minDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', chart.xAxis[0].min);
+               minDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', chart.xAxis[0].max - 5*60000);
                maxDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', chart.xAxis[0].max);
                            
                $("#selected_interval").html("Selected interval: " + minDate + " to " + maxDate);
