@@ -40,22 +40,22 @@ SQL;
    oci_bind_by_name($statement, ":start_date", $start_date);
    oci_execute($statement);
 
-   $bytime = array();
+   $history = array();
    while (($row = oci_fetch_assoc($statement))) {
       if ($row["WAIT_CLASS"] != 'rollup') {
-         $bytime[$row["SAMPLE_TIME"]][$row["WAIT_CLASS"]]  = $row["AVG_SES"];
+         $history[$row["SAMPLE_TIME"]][$row["WAIT_CLASS"]]  = $row["AVG_SES"];
 
-         if (!isset($bytime[$row["SAMPLE_TIME"]]["Overall"])) {
-            $bytime[$row["SAMPLE_TIME"]]["Overall"]  = $row["AVG_SES"];
+         if (!isset($history[$row["SAMPLE_TIME"]]["Overall"])) {
+            $history[$row["SAMPLE_TIME"]]["Overall"]  = $row["AVG_SES"];
          } else {
-            $bytime[$row["SAMPLE_TIME"]]["Overall"] = $bytime[$row["SAMPLE_TIME"]]["Overall"] + $row["AVG_SES"];
+            $history[$row["SAMPLE_TIME"]]["Overall"] = $history[$row["SAMPLE_TIME"]]["Overall"] + $row["AVG_SES"];
          }
       } else {
-         $bytime[$row["SAMPLE_TIME"]]["AvgSess"] = round($row["SESSIONS"]/$row["SAMPLES"],1);
+         $history[$row["SAMPLE_TIME"]]["AvgSess"] = round($row["SESSIONS"]/$row["SAMPLES"],1);
       }
    }
 
-   foreach ($bytime as $date) {
+   foreach ($history as $date) {
       foreach ($date as $key => $value) {
          if ($key != 'Overall' and $key != 'AvgSess') {
             $wait_classes[$key] = 0;
@@ -70,9 +70,7 @@ SQL;
    $statement = oci_parse($connect, $query);
    oci_bind_by_name($statement, ":start_date", $start_date);
    oci_execute($statement);
-   oci_fetch_all($statement, $dates);
-
-   date_default_timezone_set('UTC');
+   oci_fetch_all($statement, $dates);  
 
    $waits = array();
    foreach ($dates["MM"] as $date) {
@@ -80,9 +78,9 @@ SQL;
       //$datetime->modify('+1 hour');
 
       foreach($wait_classes as $wait_class => $value) {
-          if (isset($bytime[$date][$wait_class])) {
-             $pct = ($bytime[$date][$wait_class]/(int)$bytime[$date]["Overall"])*100;
-             $avg_sess = round($bytime[$date]["AvgSess"]/100*$pct,2);
+          if (isset($history[$date][$wait_class])) {
+             $pct = ($history[$date][$wait_class]/(int)$history[$date]["Overall"])*100;
+             $avg_sess = round($history[$date]["AvgSess"]/100*$pct,2);
              $waits[$wait_class][] = array($datetime->getTimestamp()*1000,$avg_sess);
           } else {
              $waits[$wait_class][] = array($datetime->getTimestamp()*1000,0);

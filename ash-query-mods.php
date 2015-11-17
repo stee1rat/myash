@@ -3,13 +3,13 @@
    $query_mod2 = "";
    $query_mod3 = "";
 
-   if (isset($_POST['waitclass'])) {
+   if (isset($_POST['waitClass'])) {
       $query_mod2 = "event";
 
-      if ($_POST['waitclass'] === 'CPU') {
+      if ($_POST['waitClass'] === 'CPU') {
          $query_mod1 = "\n   AND wait_class is null";
       } else {
-         $query_mod1 = "\n   AND wait_class = '" . $_POST['waitclass'] . "'";
+         $query_mod1 = "\n   AND wait_class = '" . $_POST['waitClass'] . "'";
       }
    } else {
       $query_mod2 = "wait_class";

@@ -11,8 +11,8 @@
       include('sql-types.php');
    }
 
-   $start_date = $_POST['startdate'];
-   $end_date   = $_POST['enddate'];
+   $start_date = $_POST['startDate'];
+   $end_date   = $_POST['endDate'];
 
    $query = <<<SQL
 SELECT count(*) activity
@@ -78,7 +78,7 @@ SELECT h.*, u.username
       GROUP BY h1.session_id, h1.session_serial#, h2.program, nvl(h2.{$query_mod2},'CPU'), n, user_id) h,
    dba_users u
  WHERE u.user_id = h.user_id
- ORDER BY n DESC, session_id DESC
+ ORDER BY n DESC, session_id DESC, wait_class DESC
 SQL;
    }
 

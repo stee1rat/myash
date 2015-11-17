@@ -5,4 +5,6 @@
       $m = oci_error();
       trigger_error(htmlentities($m['message']), E_USER_ERROR);
    }
+
+   date_default_timezone_set('UTC');
 ?>

@@ -13,7 +13,13 @@
          var xash;
          var chart;
 
-         function request_table(name, minDate, maxDate, waitclass) {
+         function clear() {
+            $("#top-sql").html("");
+            $("#top-session").html("");
+            $("#selected-interval").html("");
+         }
+
+         function topTable(name, minDate, maxDate, waitclass) {
             eventColors = {};
             for (var i in chart.legend.allItems) {
                eventColors[chart.legend.allItems[i]["name"]] = chart.legend.allItems[i]["color"];
@@ -26,23 +32,16 @@
                "service": $("#service").val(),
                "username": $("#username").val(),
                "password": $("#password").val(),
-               "startdate": minDate,
-               "enddate": maxDate,
-               "waitclass": waitclass,
+               "startDate": minDate,
+               "endDate": maxDate,
+               "waitClass": waitclass,
                "eventColors": eventColors
             }, function(data) {
                $("#" + name).html("").append(data);
             });
          }
 
-         function clear_outputs() {
-            $("#selected_interval").html("");
-            $("#top-sql").html("");
-            $("#report").html("")
-            $("#top-session").html("");
-         }
-
-         function historicalDays() {
+         function availableSnapshots() {
             $.post('ash-dbid.php', {
                host: $("#host").val(),
                port: $("#port").val(),
@@ -66,7 +65,7 @@
                service: $("#service").val(),
                username: $("#username").val(),
                password: $("#password").val(),
-               waitclass: waitclass
+               waitClass: waitclass
             }, function(json) {
                chart = new Highcharts.Chart({
                   chart: {
@@ -75,10 +74,10 @@
                            minDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', event.xAxis[0].min);
                            maxDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', event.xAxis[0].max);
 
-                           $("#selected_interval").html("Selected interval: " + minDate + " to " + maxDate);
+                           $("#selected-interval").html("Selected interval: " + minDate + " to " + maxDate);
 
-                           request_table('top-sql',minDate,maxDate,waitclass);
-                           request_table('top-session',minDate,maxDate,waitclass);
+                           topTable('top-sql',minDate,maxDate,waitclass);
+                           topTable('top-session',minDate,maxDate,waitclass);
 
                            return false;
                         }
@@ -99,18 +98,17 @@
                   series: json.series
                });
 
-               clear_outputs();
+               clear();
 
                minDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', chart.xAxis[0].max - 5*60000);
                maxDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', chart.xAxis[0].max);
 
-               $("#selected_interval").html("Selected interval: " + minDate + " to " + maxDate);
+               $("#selected-interval").html("Selected interval: " + minDate + " to " + maxDate);
+               $("#awr-dates").css("visibility","visible");
+               $("#instance-name").html(json.instance);
 
-               $("#instance_name").html(json.instance + ' ');
-               $("#TD_AWR").css("visibility","visible");
-
-               request_table('top-sql',minDate,maxDate,waitclass);
-               request_table('top-session',minDate,maxDate,waitclass);
+               topTable('top-sql',minDate,maxDate,waitclass);
+               topTable('top-session',minDate,maxDate,waitclass);
             },
             "json")
             .fail(function(err) {
@@ -118,9 +116,9 @@
             });
 
             if (waitclass === undefined) {
+               $("#historical").attr('checked', false);
                $("#dbid").attr('disabled', true);
                $("#day").attr('disabled', true);
-               $("#AWR").attr('checked', false);
 
                $.post('ash-dbid.php', {
                   host: $("#host").val(),
@@ -130,7 +128,7 @@
                   password: $("#password").val()
                }, function(data) {
                   $("#dbid").html(data);
-                  historicalDays();
+                  availableSnapshots();
                });
             }
          }
@@ -143,15 +141,15 @@
             });
 
             $("#dbid").change(function() {
-               historicalDays();
+               availableSnapshots();               
             });
 
             $("#day").change(function() {
                console.log('DBID: ' + $("#dbid").val() + ', Date: ' + $("#day").val());
             });
 
-            $("#AWR").click(function() {
-               if ($("#AWR").is(':checked')) {
+            $("#historical").click(function() {
+               if (this.checked) {
                   $("#dbid").attr('disabled', false);
                   $("#day").attr('disabled', false);
                } else {
@@ -215,12 +213,12 @@
          </tr>
          <tr>
             <td style="vertical-align:middle" align="middle" height="40px">
-               <div id="instance_name" style='font-size:14px;'>&nbsp;</div>
+               <div id="instance-name" style='font-size:14px;'>&nbsp;</div>
             </td>
          </tr>
          <tr>
-            <td style="vertical-align:middle;visibility:hidden" align="right" id="TD_AWR">
-               <input type="checkbox" align="right" id="AWR" style="vertical-align:middle;bottom:1px;position:relative"/>Historical
+            <td style="vertical-align:middle;visibility:hidden" align="right" id="awr-dates">
+               <input type="checkbox" align="right" id="historical" style="vertical-align:middle;bottom:1px;position:relative"/>Historical
                &nbsp;&nbsp;<select id='dbid' disabled></select>
                &nbsp;&nbsp;<select id='day' disabled></select>
             </td>
@@ -233,7 +231,7 @@
          <tr>
             <tr>
                <td style="text-align:center" colspan=2>
-                  <div id="selected_interval"> </div><br/>
+                  <div id="selected-interval"> </div><br/>
                </td>
             </tr>
             <td valign="top">
@@ -244,7 +242,5 @@
             </td>
          </tr>
       </table>
-      <br>
-      <div id="report" style="min-width: 310px; margin: 0 auto; padding-left:70px"></div>
    </body>
 </html>
