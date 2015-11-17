@@ -71,7 +71,9 @@ SQL;
    oci_bind_by_name($statement, ":start_date", $start_date);
    oci_execute($statement);
    oci_fetch_all($statement, $dates);
-   
+
+   date_default_timezone_set('UTC');
+
    $waits = array();
    foreach ($dates["MM"] as $date) {
       $datetime=DateTime::createFromFormat('d.m.Y H:i:s',$date);

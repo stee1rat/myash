@@ -15,7 +15,6 @@
 
          function request_table(name, minDate, maxDate, waitclass) {
             eventColors = {};
-
             for (var i in chart.legend.allItems) {
                eventColors[chart.legend.allItems[i]["name"]] = chart.legend.allItems[i]["color"];
             }
