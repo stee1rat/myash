@@ -7,6 +7,7 @@
       <script type="text/javascript" src="jquery/jquery-2.1.4.min.js"></script>
       <script type="text/javascript" src="highcharts/highcharts.js"></script>
       <script type="text/javascript" src="highcharts/legend-highlight.js"></script>
+      <script type="text/javascript" src="highcharts/highcharts-default-settings.js"></script>
 
       <script type="text/javascript">
          var xash;
@@ -41,7 +42,7 @@
             $("#report").html("")
             $("#top-session").html("");
          }
-         
+
          function historicalDays() {
             $.post('ash-dbid.php', {
                host: $("#host").val(),
@@ -68,89 +69,30 @@
                password: $("#password").val(),
                waitclass: waitclass
             }, function(json) {
-               Highcharts.setOptions({
-                  global: {
-                    useUTC: false
-                  }
-               });
-
                chart = new Highcharts.Chart({
-                  credits: {
-                     "enabled": false
-                  },
-                  legend: {
-                     layout: 'vertical',
-                     align: 'right',
-                     verticalAlign: 'middle'
-                  },
-                  tooltip: {
-                     enabled: false
-                  },
                   chart: {
-                     type: 'area',
-                     renderTo: "container",
-                     zoomType: 'x',
                      events: {
                         selection: function(event) {
                            minDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', event.xAxis[0].min);
                            maxDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', event.xAxis[0].max);
-                           
+
                            $("#selected_interval").html("Selected interval: " + minDate + " to " + maxDate);
-                           
+
                            request_table('top-sql',minDate,maxDate,waitclass);
                            request_table('top-session',minDate,maxDate,waitclass);
-                           
+
                            return false;
                         }
                      }
                   },
-                  exporting: {
-                     enabled: false
-                  },
-                  title: {
-                     text: '',
-                     style: {fontSize:"12px"}
-                  },
-                  subtitle: {
-                     text: ''
-                  },
-                  xAxis: {
-                     type: "datetime",
-                     labels: {
-                        formatter:function() {
-                           return Highcharts.dateFormat('%H:%M', this.value);
-                        }
-                     }
-                  },
-                  yAxis: {
-                     title: {
-                        text: 'Active Sessions'
-                     }
-                  },
                   plotOptions: {
                      area: {
-                        stacking: 'normal',
-                        lineColor: '#666666',
-                        lineWidth: 0,
-                        marker: {
-                            enabled: false,
-                            lineWidth: 1,
-                            lineColor: '#666666'
-                        },
                         events: {
                            legendItemClick: function(event) {
                               if (waitclass === undefined) {
                                  plot(event.target.name);
                               }
-
                               return false;
-                           }
-                        }
-                     },
-                     series: {
-                        states: {
-                           hover: {
-                              enabled: false
                            }
                         }
                      }
@@ -158,16 +100,16 @@
                   series: json.series
                });
 
-               clear_outputs();               
+               clear_outputs();
 
                minDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', chart.xAxis[0].max - 5*60000);
                maxDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', chart.xAxis[0].max);
-                           
+
                $("#selected_interval").html("Selected interval: " + minDate + " to " + maxDate);
 
                $("#instance_name").html(json.instance + ' ');
                $("#TD_AWR").css("visibility","visible");
-               
+
                request_table('top-sql',minDate,maxDate,waitclass);
                request_table('top-session',minDate,maxDate,waitclass);
             },
@@ -206,7 +148,7 @@
             });
 
             $("#day").change(function() {
-               console.log($("#day").val());
+               console.log('DBID: ' + $("#dbid").val() + ', Date: ' + $("#day").val());
             });
 
             $("#AWR").click(function() {
