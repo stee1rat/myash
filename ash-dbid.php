@@ -24,18 +24,24 @@
       }
    } else {
       $query = <<<SQL
-SELECT to_char(trunc(begin_interval_time,'DD'), 'DD.MM.YYYY') day 
-  FROM dba_hist_snapshot 
- WHERE dbid = {$_POST["dbid"]} 
- GROUP BY trunc(begin_interval_time,'DD') 
+SELECT to_char(trunc(begin_interval_time,'DD'), 'DD.MM.YYYY') day
+  FROM dba_hist_snapshot
+ WHERE dbid = {$_POST["dbid"]}
+ GROUP BY trunc(begin_interval_time,'DD')
  ORDER BY trunc(begin_interval_time,'DD') DESC
 SQL;
 
       $statement = oci_parse($connect, $query);
       oci_execute($statement);
 
+      $first = true;
       while ($row = oci_fetch_array($statement)) {
-         print "<option value='".$row["DAY"]."'>".$row["DAY"]."</option>";
+         print "<option value='".$row["DAY"]."' ";
+         if ($first) {
+           print "selected";
+           $first = false;
+         }
+         print ">".$row["DAY"]."</option>";
       }
    }
    oci_close($connect);

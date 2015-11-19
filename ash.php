@@ -25,18 +25,18 @@
                eventColors[chart.legend.allItems[i]["name"]] = chart.legend.allItems[i]["color"];
             }
 
-            $.post('ash-top.php', {
-               "type": name,
-               "host": $("#host").val(),
-               "port": $("#port").val(),
-               "service": $("#service").val(),
-               "username": $("#username").val(),
-               "password": $("#password").val(),
-               "startDate": minDate,
-               "endDate": maxDate,
-               "waitClass": waitclass,
-               "eventColors": eventColors
-            }, function(data) {
+            jsonData = { "type"       : name,
+                         "host"       : $("#host").val(),
+                         "port"       : $("#port").val(),
+                         "service"    : $("#service").val(),
+                         "username"   : $("#username").val(),
+                         "password"   : $("#password").val(),
+                         "startDate"  : minDate,
+                         "endDate"    : maxDate,
+                         "waitClass"  : waitclass,
+                         "eventColors": eventColors };
+
+            $.post('ash-top.php', jsonData, function(data) {
                $("#" + name).html("").append(data);
             });
          }
@@ -51,6 +51,9 @@
                dbid: $("#dbid").val()
             }, function(data) {
                $("#day").html(data);
+               if ($("#historical").prop('checked')) {
+                  $("#day").trigger('change');
+               }
             });
          }
 
@@ -59,7 +62,17 @@
                xash.abort();
             }
 
-            xash = $.post('ash-data.php', {
+            if (typeof(chart)!=='undefined') {
+               chart.showLoading();
+            }
+
+            if (!$("#historical").prop('checked')) {
+               dataPage = 'ash-data.php';
+            } else {
+               dataPage = 'awr-data.php';
+            }
+
+            xash = $.post(dataPage, {
                host: $("#host").val(),
                port:$ ("#port").val(),
                service: $("#service").val(),
@@ -100,7 +113,7 @@
 
                clear();
 
-               minDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', chart.xAxis[0].max - 5*60000);
+               minDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', chart.xAxis[0].max - 5*60*1000);
                maxDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', chart.xAxis[0].max);
 
                $("#selected-interval").html("Selected interval: " + minDate + " to " + maxDate);
@@ -141,17 +154,18 @@
             });
 
             $("#dbid").change(function() {
-               availableSnapshots();               
+               availableSnapshots();
             });
 
             $("#day").change(function() {
                console.log('DBID: ' + $("#dbid").val() + ', Date: ' + $("#day").val());
+               plot();
             });
 
             $("#historical").click(function() {
                if (this.checked) {
                   $("#dbid").attr('disabled', false);
-                  $("#day").attr('disabled', false);
+                  $("#day").attr('disabled', false)   .trigger('change');
                } else {
                   $("#dbid").attr('disabled', true);
                   $("#day").attr('disabled', true);
