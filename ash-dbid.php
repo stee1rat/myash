@@ -34,14 +34,8 @@ SQL;
       $statement = oci_parse($connect, $query);
       oci_execute($statement);
 
-      $first = true;
       while ($row = oci_fetch_array($statement)) {
-         print "<option value='".$row["DAY"]."' ";
-         if ($first) {
-           print "selected";
-           $first = false;
-         }
-         print ">".$row["DAY"]."</option>";
+         print "<option value='".$row["DAY"]."'>".$row["DAY"]."</option>";
       }
    }
    oci_close($connect);

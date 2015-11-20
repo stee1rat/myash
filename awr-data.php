@@ -29,8 +29,8 @@ SELECT to_char(trunc(sample_time - numtodsinterval(mod(extract(minute FROM Cast(
        round(count(distinct sample_time)) samples
   FROM (SELECT sample_time, nvl(wait_class,'CPU') wait_class, count(*) sessions
           FROM dba_hist_active_sess_history
-         WHERE snap_id between 52279 and 52422
-         and dbid = 690380086
+         WHERE snap_id between 16587 and 16730
+         and dbid = 3647405474
          and instance_number = 1
          GROUP BY sample_time, nvl(wait_class,'CPU'))
 GROUP BY ROLLUP(to_char(trunc(sample_time - numtodsinterval(mod(extract(minute FROM Cast(sample_time AS TIMESTAMP)), 5), 'minute'),'MI'), 'DD.MM.YYYY HH24:MI:SS'),
@@ -70,7 +70,7 @@ SQL;
    }
 
    $query = <<<SQL
-SELECT to_date('18.11.2015','DD.MM.YYYY') + LEVEL/24/60*5 mm FROM dual CONNECT BY LEVEL <= 24*60/5
+SELECT to_date('13.06.2015','DD.MM.YYYY') + LEVEL/24/60*5 mm FROM dual CONNECT BY LEVEL <= 24*60/5
 SQL;
 
    $statement = oci_parse($connect, $query);
