@@ -54,9 +54,7 @@
             $.post('ash-dbid.php', jsonData, function(data) {
                $('#day').html(data);
                $('#awr-dates').css('visibility','visible');
-               // if ($('#historical').prop('checked')) {
-               //    $('#day').trigger('change');
-               // }
+               $('#day').trigger('change');
             });
          }
 
@@ -69,18 +67,20 @@
                chart.showLoading();
             }
 
-            if (!$('#historical').prop('checked')) {
-               dataPage = 'ash-data.php';
-            } else {
-               dataPage = 'awr-data.php';
-            }
-
             jsonData = { 'host'      : $('#host').val(),
                          'port'      : $('#port').val(),
                          'service'   : $('#service').val(),
                          'username'  : $('#username').val(),
                          'password'  : $('#password').val(),
                          'waitClass' : waitClass } ;
+
+            if (!$('#historical').prop('checked')) {
+               dataPage = 'ash-data.php';
+            } else {
+               dataPage = 'awr-data.php';
+               jsonData['dbid'] = $('#dbid').val();
+               jsonData['day'] = $('#day').val();
+            }
 
             xash = $.post(dataPage, jsonData, function(json) {
                chart = new Highcharts.Chart({
@@ -132,34 +132,32 @@
          }
 
          $(document).ready(function() {
-            plot();
-
-            $('#historical').attr('checked', false);
-            $('#dbid').attr('disabled', true);
-            $('#day').attr('disabled', true);
-
-            jsonData = { 'host'     : $('#host').val(),
-                         'port'     : $('#port').val(),
-                         'service'  : $('#service').val(),
-                         'username' : $('#username').val(),
-                         'password' : $('#password').val() };
-
-            $.post('ash-dbid.php', jsonData, function(data) {
-               $('#dbid').html(data);
-               availableSnapshots();
-            });
-
             $('#connect').click(function() {
                $('#historical').attr('checked', false);
+               $('#dbid').attr('disabled', true);
+               $('#day').attr('disabled', true);
+
+               jsonData = { 'host'     : $('#host').val(),
+                            'port'     : $('#port').val(),
+                            'service'  : $('#service').val(),
+                            'username' : $('#username').val(),
+                            'password' : $('#password').val() };
+
+               $.post('ash-dbid.php', jsonData, function(data) {
+                  $('#dbid').html(data);
+                  availableSnapshots();
+               });
+
                plot();
             });
+
+            $('#connect').trigger('click');
 
             $('#dbid').change(function() {
                availableSnapshots();
             });
 
             $('#day').change(function() {
-               console.log('DBID: ' + $('#dbid').val() + ', Date: ' + $('#day').val());
                plot();
             });
 
@@ -167,11 +165,11 @@
                if (this.checked) {
                   $('#dbid').attr('disabled', false);
                   $('#day').attr('disabled', false);
-                  console.log('DBID: ' + $('#dbid').val() + ', Date: ' + $('#day').val());
-                  //$('#day').attr('disabled', false).trigger('change');
+                  $('#day').trigger('change');
                } else {
                   $('#dbid').attr('disabled', true);
                   $('#day').attr('disabled', true);
+                  $('#connect').trigger('click');
                }
             });
          });

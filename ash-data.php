@@ -70,12 +70,11 @@ SQL;
    $statement = oci_parse($connect, $query);
    oci_bind_by_name($statement, ":start_date", $start_date);
    oci_execute($statement);
-   oci_fetch_all($statement, $dates);  
+   oci_fetch_all($statement, $dates);
 
    $waits = array();
    foreach ($dates["MM"] as $date) {
       $datetime=DateTime::createFromFormat('d.m.Y H:i:s',$date);
-      //$datetime->modify('+1 hour');
 
       foreach($wait_classes as $wait_class => $value) {
           if (isset($history[$date][$wait_class])) {

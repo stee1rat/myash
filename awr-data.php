@@ -10,16 +10,21 @@
    oci_execute($statement);
 
    $query = <<<SQL
-SELECT 'Connected to: ' || instance_name || '@' || host_name || ', Version: ' || version instance,
-        trunc(sysdate - 1/24,'MI') start_date
-  FROM v\$instance, v\$license
+   SELECT min(snap_id) min_snap_id, max(snap_id) max_snap_id
+     FROM dba_hist_snapshot
+    WHERE trunc(begin_interval_time) = to_date(:day,'DD.MM.YYYY')
+      AND dbid = :dbid
 SQL;
 
    $statement = oci_parse($connect, $query);
-   oci_execute($statement);
-   oci_fetch_all($statement, $instance);
 
-   $start_date = $instance["START_DATE"][0];
+   oci_bind_by_name($statement, ':dbid', $_POST['dbid']);
+   oci_bind_by_name($statement, ':day', $_POST['day']);
+   oci_execute($statement);
+   oci_fetch_all($statement, $snapshots);
+
+   $min_snap_id = $snapshots["MIN_SNAP_ID"][0];
+   $max_snap_id = $snapshots["MAX_SNAP_ID"][0];
 
    $query = <<<SQL
 SELECT to_char(trunc(sample_time - numtodsinterval(mod(extract(minute FROM Cast(sample_time AS TIMESTAMP)), 5), 'minute'),'MI'), 'DD.MM.YYYY HH24:MI:SS') sample_time,
@@ -27,24 +32,22 @@ SELECT to_char(trunc(sample_time - numtodsinterval(mod(extract(minute FROM Cast(
        round(sum(sessions)) sessions,
        round(avg(sessions)) avg_ses,
        round(count(distinct sample_time)) samples
-  FROM (SELECT sample_time, nvl(wait_class,'CPU') wait_class, count(*) sessions
+  FROM (SELECT sample_time, nvl({$query_mod2},'CPU') wait_class, count(*) sessions
           FROM dba_hist_active_sess_history
-         WHERE snap_id between 16587 and 16730
-         and dbid = 3647405474
-         and instance_number = 1
-         GROUP BY sample_time, nvl(wait_class,'CPU'))
+         WHERE snap_id between :min_snap_id and :max_snap_id
+         and dbid = :dbid
+         and instance_number = 1 {$query_mod1}
+         GROUP BY sample_time, nvl({$query_mod2},'CPU'))
 GROUP BY ROLLUP(to_char(trunc(sample_time - numtodsinterval(mod(extract(minute FROM Cast(sample_time AS TIMESTAMP)), 5), 'minute'),'MI'), 'DD.MM.YYYY HH24:MI:SS'),
                 wait_class)
 ORDER BY 1,2
 SQL;
 
    $statement = oci_parse($connect, $query);
-   //oci_bind_by_name($statement, ":start_date", $start_date);
+   oci_bind_by_name($statement, ':dbid', $_POST['dbid']);
+   oci_bind_by_name($statement, ':min_snap_id', $min_snap_id);
+   oci_bind_by_name($statement, ':max_snap_id', $max_snap_id);
    oci_execute($statement);
-
-   //print "<pre>";
-   //print $query;
-   //print "<pre>";
 
    $history = array();
    while (($row = oci_fetch_assoc($statement))) {
@@ -70,18 +73,17 @@ SQL;
    }
 
    $query = <<<SQL
-SELECT to_date('13.06.2015','DD.MM.YYYY') + LEVEL/24/60*5 mm FROM dual CONNECT BY LEVEL <= 24*60/5
+SELECT to_date(:day,'DD.MM.YYYY') + LEVEL/24/60*5 mm FROM dual CONNECT BY LEVEL <= 24*60/5
 SQL;
 
    $statement = oci_parse($connect, $query);
-   //oci_bind_by_name($statement, ":start_date", $start_date);
+   oci_bind_by_name($statement, ':day', $_POST['day']);
    oci_execute($statement);
    oci_fetch_all($statement, $dates);
 
    $waits = array();
    foreach ($dates["MM"] as $date) {
       $datetime=DateTime::createFromFormat('d.m.Y H:i:s',$date);
-      //$datetime->modify('+1 hour');
 
       foreach($wait_classes as $wait_class => $value) {
           if (isset($history[$date][$wait_class])) {
@@ -141,8 +143,6 @@ SQL;
 
       array_push($options['series'], $series);
    }
-
-   $options['instance'] = $instance['INSTANCE'];
 
    print json_encode($options);
 ?>
