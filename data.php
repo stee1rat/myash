@@ -1,9 +1,9 @@
 <?php
    // Connect to the database and define $connect variable
-   include('ash-connect.php');
+   include('connect.php');
 
    // Define $query_mod1 and $query_mod2 variables
-   include('ash-query-mods.php');
+   include('query-mods.php');
 
    $query = "alter session set nls_date_format = 'DD.MM.YYYY HH24:MI:SS'";
    $statement = oci_parse($connect, $query);

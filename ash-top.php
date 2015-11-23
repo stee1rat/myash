@@ -1,10 +1,10 @@
  <?php
 
    // Connect to the database and define $connect variable
-   include('ash-connect.php');
+   include('connect.php');
 
    // Define $query_mod1, $query_mod2 and $query_mod3 variables
-   include('ash-query-mods.php');
+   include('query-mods.php');
 
    // Define get_sqltype function for top-sql table
    if ($_POST['type'] === 'top-sql') {

@@ -51,7 +51,7 @@
                          'password' : $('#password').val(),
                          'dbid'     : $('#dbid').val() } ;
 
-            $.post('ash-dbid.php', jsonData, function(data) {
+            $.post('dbid.php', jsonData, function(data) {
                $('#day').html(data);
                if ($('#historical').prop('checked')) {
                   $('#day').trigger('change');
@@ -146,7 +146,7 @@
                             'username' : $('#username').val(),
                             'password' : $('#password').val() };
 
-               $.post('ash-dbid.php', jsonData, function(data) {
+               $.post('dbid.php', jsonData, function(data) {
                   $('#dbid').html(data);
                   availableSnapshots();
                });
