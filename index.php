@@ -53,7 +53,6 @@
 
             $.post('ash-dbid.php', jsonData, function(data) {
                $('#day').html(data);
-               $('#awr-dates').css('visibility','visible');
                if ($('#historical').prop('checked')) {
                   $('#day').trigger('change');
                }
@@ -74,17 +73,17 @@
                          'service'   : $('#service').val(),
                          'username'  : $('#username').val(),
                          'password'  : $('#password').val(),
-                         'waitClass' : waitClass,
-                         'dbid'      : $('#dbid').val(),
-                         'day'       : $('#day').val() } ;
+                         'waitClass' : waitClass } ;
 
             if (!$('#historical').prop('checked')) {
-               dataPage = 'ash-data.php';
+               jsonData['data'] = 'ash';
             } else {
-               dataPage = 'awr-data.php';
+               jsonData['data'] = 'awr';
+               jsonData['dbid'] = $('#dbid').val();
+               jsonData['day']  = $('#day').val();
             }
 
-            xash = $.post(dataPage, jsonData, function(json) {
+            xash = $.post('data.php', jsonData, function(json) {
                chart = new Highcharts.Chart({
                   chart: {
                      events: {
@@ -126,6 +125,8 @@
 
                topTable('top-sql',minDate,maxDate,waitClass);
                topTable('top-session',minDate,maxDate,waitClass);
+
+               $('#awr-dates').css('visibility','visible');
             },
             'json')
             .fail(function(err) {

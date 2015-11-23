@@ -9,44 +9,35 @@
    $statement = oci_parse($connect, $query);
    oci_execute($statement);
 
-   $query = <<<SQL
-   SELECT min(snap_id) min_snap_id, max(snap_id) max_snap_id
-     FROM dba_hist_snapshot
-    WHERE trunc(begin_interval_time) = to_date(:day,'DD.MM.YYYY')
-      AND dbid = :dbid
-SQL;
+   if ($_POST['data'] === 'ash') {
+      include('queries/instance-name.php');
+      $statement = oci_parse($connect, $query);
+      oci_execute($statement);
+      oci_fetch_all($statement, $instance);
 
-   $statement = oci_parse($connect, $query);
+      $start_date = $instance["START_DATE"][0];
 
-   oci_bind_by_name($statement, ':dbid', $_POST['dbid']);
-   oci_bind_by_name($statement, ':day', $_POST['day']);
-   oci_execute($statement);
-   oci_fetch_all($statement, $snapshots);
+      include('queries/ash-data.php');
+      $statement = oci_parse($connect, $query);
+      oci_bind_by_name($statement, ":start_date", $start_date);
+   } else if ($_POST['data'] === 'awr') {
+      include('queries/min-max-snapshots.php');
+      $statement = oci_parse($connect, $query);
+      oci_bind_by_name($statement, ':dbid', $_POST['dbid']);
+      oci_bind_by_name($statement, ':day', $_POST['day']);
+      oci_execute($statement);
+      oci_fetch_all($statement, $snapshots);
 
-   $min_snap_id = $snapshots["MIN_SNAP_ID"][0];
-   $max_snap_id = $snapshots["MAX_SNAP_ID"][0];
+      $min_snap_id = $snapshots["MIN_SNAP_ID"][0];
+      $max_snap_id = $snapshots["MAX_SNAP_ID"][0];
 
-   $query = <<<SQL
-SELECT to_char(trunc(sample_time - numtodsinterval(mod(extract(minute FROM Cast(sample_time AS TIMESTAMP)), 5), 'minute'),'MI'), 'DD.MM.YYYY HH24:MI:SS') sample_time,
-       nvl(wait_class,'rollup') wait_class,
-       round(sum(sessions)) sessions,
-       round(avg(sessions)) avg_ses,
-       round(count(distinct sample_time)) samples
-  FROM (SELECT sample_time, nvl({$query_mod2},'CPU') wait_class, count(*) sessions
-          FROM dba_hist_active_sess_history
-         WHERE snap_id between :min_snap_id and :max_snap_id
-         and dbid = :dbid
-         and instance_number = 1 {$query_mod1}
-         GROUP BY sample_time, nvl({$query_mod2},'CPU'))
-GROUP BY ROLLUP(to_char(trunc(sample_time - numtodsinterval(mod(extract(minute FROM Cast(sample_time AS TIMESTAMP)), 5), 'minute'),'MI'), 'DD.MM.YYYY HH24:MI:SS'),
-                wait_class)
-ORDER BY 1,2
-SQL;
+      include('queries/awr-data.php');
+      $statement = oci_parse($connect, $query);
+      oci_bind_by_name($statement, ':dbid', $_POST['dbid']);
+      oci_bind_by_name($statement, ':min_snap_id', $min_snap_id);
+      oci_bind_by_name($statement, ':max_snap_id', $max_snap_id);
+   }
 
-   $statement = oci_parse($connect, $query);
-   oci_bind_by_name($statement, ':dbid', $_POST['dbid']);
-   oci_bind_by_name($statement, ':min_snap_id', $min_snap_id);
-   oci_bind_by_name($statement, ':max_snap_id', $max_snap_id);
    oci_execute($statement);
 
    $history = array();
@@ -72,12 +63,16 @@ SQL;
       }
    }
 
-   $query = <<<SQL
-SELECT to_date(:day,'DD.MM.YYYY') + LEVEL/24/60*5 mm FROM dual CONNECT BY LEVEL <= 24*60/5
-SQL;
+   if ($_POST['data'] === 'ash') {
+      include('queries/ash-timeline.php');
+      $statement = oci_parse($connect, $query);
+      oci_bind_by_name($statement, ":start_date", $start_date);
+   } else if ($_POST['data'] === 'awr') {
+      include('queries/awr-timeline.php');
+      $statement = oci_parse($connect, $query);
+      oci_bind_by_name($statement, ":day",  $_POST['day']);
+   }
 
-   $statement = oci_parse($connect, $query);
-   oci_bind_by_name($statement, ':day', $_POST['day']);
    oci_execute($statement);
    oci_fetch_all($statement, $dates);
 
@@ -142,6 +137,10 @@ SQL;
       }
 
       array_push($options['series'], $series);
+   }
+
+   if ($_POST['data'] === 'ash') {
+      $options['instance'] = $instance['INSTANCE'];
    }
 
    print json_encode($options);
