@@ -54,7 +54,9 @@
             $.post('ash-dbid.php', jsonData, function(data) {
                $('#day').html(data);
                $('#awr-dates').css('visibility','visible');
-               $('#day').trigger('change');
+               if ($('#historical').prop('checked')) {
+                  $('#day').trigger('change');
+               }
             });
          }
 
@@ -72,14 +74,14 @@
                          'service'   : $('#service').val(),
                          'username'  : $('#username').val(),
                          'password'  : $('#password').val(),
-                         'waitClass' : waitClass } ;
+                         'waitClass' : waitClass,
+                         'dbid'      : $('#dbid').val(),
+                         'day'       : $('#day').val() } ;
 
             if (!$('#historical').prop('checked')) {
                dataPage = 'ash-data.php';
             } else {
                dataPage = 'awr-data.php';
-               jsonData['dbid'] = $('#dbid').val();
-               jsonData['day'] = $('#day').val();
             }
 
             xash = $.post(dataPage, jsonData, function(json) {
