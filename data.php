@@ -10,18 +10,46 @@
    oci_execute($statement);
 
    if ($_POST['data'] === 'ash') {
-      include('queries/instance-name.php');
+
+      $query = <<<SQL
+SELECT 'Connected to: ' || instance_name || '@' || host_name || ', Version: ' || version instance,
+       trunc(sysdate - 1/24,'MI') start_date
+  FROM v\$instance, v\$license
+SQL;
+
       $statement = oci_parse($connect, $query);
       oci_execute($statement);
       oci_fetch_all($statement, $instance);
 
       $start_date = $instance["START_DATE"][0];
 
-      include('queries/ash-data.php');
+      $query = <<<SQL
+SELECT to_char(sample_time - numtodsinterval(mod(extract(second FROM Cast(sample_time AS TIMESTAMP)), 15), 'second'), 'DD.MM.YYYY HH24:MI:SS') sample_time,
+       nvl(wait_class,'rollup') wait_class,
+       round(sum(sessions)) sessions,
+       round(avg(sessions)) avg_ses,
+       round(count(distinct sample_time)) samples
+ FROM (SELECT sample_time, nvl({$query_mod2},'CPU') wait_class, count(*) sessions
+         FROM v\$active_session_history
+        WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS') {$query_mod1}
+        GROUP BY sample_time, nvl({$query_mod2},'CPU'))
+GROUP BY ROLLUP(to_char(sample_time - numtodsinterval(mod(extract(second FROM cast(sample_time AS timestamp)), 15), 'second'), 'DD.MM.YYYY HH24:MI:SS'),
+             wait_class)
+ORDER BY 1,2
+SQL;
+
       $statement = oci_parse($connect, $query);
       oci_bind_by_name($statement, ":start_date", $start_date);
+
    } else if ($_POST['data'] === 'awr') {
-      include('queries/min-max-snapshots.php');
+
+      $query = <<<SQL
+SELECT min(snap_id) min_snap_id, max(snap_id) max_snap_id
+  FROM dba_hist_snapshot
+ WHERE trunc(begin_interval_time) = to_date(:day,'DD.MM.YYYY')
+   AND dbid = :dbid
+SQL;
+
       $statement = oci_parse($connect, $query);
       oci_bind_by_name($statement, ':dbid', $_POST['dbid']);
       oci_bind_by_name($statement, ':day', $_POST['day']);
@@ -31,7 +59,23 @@
       $min_snap_id = $snapshots["MIN_SNAP_ID"][0];
       $max_snap_id = $snapshots["MAX_SNAP_ID"][0];
 
-      include('queries/awr-data.php');
+      $query = <<<SQL
+SELECT to_char(trunc(sample_time - numtodsinterval(mod(extract(minute FROM Cast(sample_time AS TIMESTAMP)), 5), 'minute'),'MI'), 'DD.MM.YYYY HH24:MI:SS') sample_time,
+       nvl(wait_class,'rollup') wait_class,
+       round(sum(sessions)) sessions,
+       round(avg(sessions)) avg_ses,
+       round(count(distinct sample_time)) samples
+FROM (SELECT sample_time, nvl({$query_mod2},'CPU') wait_class, count(*) sessions
+        FROM dba_hist_active_sess_history
+       WHERE snap_id between :min_snap_id and :max_snap_id
+         AND dbid = :dbid
+         AND instance_number = 1 {$query_mod1}
+       GROUP BY sample_time, nvl({$query_mod2},'CPU'))
+GROUP BY ROLLUP(to_char(trunc(sample_time - numtodsinterval(mod(extract(minute FROM Cast(sample_time AS TIMESTAMP)), 5), 'minute'),'MI'), 'DD.MM.YYYY HH24:MI:SS'),
+                wait_class)
+ORDER BY 1,2
+SQL;
+
       $statement = oci_parse($connect, $query);
       oci_bind_by_name($statement, ':dbid', $_POST['dbid']);
       oci_bind_by_name($statement, ':min_snap_id', $min_snap_id);
@@ -64,11 +108,19 @@
    }
 
    if ($_POST['data'] === 'ash') {
-      include('queries/ash-timeline.php');
+      
+      $query = <<<SQL
+SELECT to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS') + LEVEL/24/60/60*15 mm FROM dual CONNECT BY LEVEL <= 60*4
+SQL;
       $statement = oci_parse($connect, $query);
       oci_bind_by_name($statement, ":start_date", $start_date);
+
    } else if ($_POST['data'] === 'awr') {
-      include('queries/awr-timeline.php');
+
+      $query = <<<SQL
+SELECT to_date(:day,'DD.MM.YYYY') + LEVEL/24/60*5 mm FROM dual CONNECT BY LEVEL <= 24*60/5
+SQL;
+
       $statement = oci_parse($connect, $query);
       oci_bind_by_name($statement, ":day",  $_POST['day']);
    }
