@@ -38,9 +38,21 @@
                          'waitClass'  : waitClass,
                          'eventColors': eventColors };
 
-            $.post('ash-top.php', jsonData, function(data) {
-               $('#' + name).html('').append(data);
-            });
+             if (!$('#historical').prop('checked')) {
+                jsonData['data'] = 'ash';
+
+                $.post('ash-top.php', jsonData, function(data) {
+                  $('#' + name).html('').append(data);
+                });
+             } else {
+                jsonData['data'] = 'awr';
+                jsonData['dbid'] = $('#dbid').val();
+                jsonData['day']  = $('#day').val();
+
+                $.post('awr-top.php', jsonData, function(data) {
+                  $('#' + name).html('').append(data);
+                });
+             }
          }
 
          function availableSnapshots() {
