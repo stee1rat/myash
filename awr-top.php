@@ -139,25 +139,25 @@ ORDER BY n DESC, session_id DESC, wait_class DESC
 SQL;
   }*/
 
-  $start_time = microtime(true);
+   $start_time = microtime(true);
 
-  // $statement = oci_parse($connect, $query);
-  //
-  // oci_bind_by_name($statement, ':dbid', $_POST['dbid']);
-  // oci_bind_by_name($statement, ':min_snap_id', $min_snap_id, -1, OCI_B_INT);
-  // oci_bind_by_name($statement, ':max_snap_id', $max_snap_id, -1, OCI_B_INT);
-  // oci_bind_by_name($statement, ":start_date", $start_date);
-  // oci_bind_by_name($statement, ":end_date", $end_date);
-  // oci_bind_by_name($statement, ":sum_activity", $sum_activity);
+  $statement = oci_parse($connect, $query);
 
-  $sql = str_replace(':dbid', $_POST['dbid'], $query);
-  $sql = str_replace(':min_snap_id', $min_snap_id, $sql);
-  $sql = str_replace(':max_snap_id', $max_snap_id, $sql);
-  $sql = str_replace(":start_date", "'".$start_date."'", $sql);
-  $sql = str_replace(":end_date", "'".$end_date."'", $sql);
-  $sql = str_replace(":sum_activity", $sum_activity, $sql);
+  oci_bind_by_name($statement, ':dbid', $_POST['dbid']);
+  oci_bind_by_name($statement, ':min_snap_id', $min_snap_id, -1, OCI_B_INT);
+  oci_bind_by_name($statement, ':max_snap_id', $max_snap_id, -1, OCI_B_INT);
+  oci_bind_by_name($statement, ":start_date", $start_date);
+  oci_bind_by_name($statement, ":end_date", $end_date);
+  oci_bind_by_name($statement, ":sum_activity", $sum_activity);
 
-  $statement = oci_parse($connect, $sql);
+   // $sql = str_replace(':dbid', $_POST['dbid'], $query);
+   // $sql = str_replace(':min_snap_id', $min_snap_id, $sql);
+   // $sql = str_replace(':max_snap_id', $max_snap_id, $sql);
+   // $sql = str_replace(":start_date", "'".$start_date."'", $sql);
+   // $sql = str_replace(":end_date", "'".$end_date."'", $sql);
+   // $sql = str_replace(":sum_activity", $sum_activity, $sql);
+   //
+   // $statement = oci_parse($connect, $sql);
 
   // print "dbid:" . $_POST['dbid'] . "<br>";
   // print "min_snap_id:" .$min_snap_id . "<br>";
@@ -166,25 +166,100 @@ SQL;
   // print "end_date:" .$end_date . "<br>";
   // print "sum_activity:" .$sum_activity . "<br>";
 
-  print "<pre>";
-  print_r($sql);
-  print "</pre>";
+   // print "<pre>";
+   // print_r($sql);
+   // print "</pre>";
 
-  $start_time = microtime(true);
-  oci_execute($statement);
-  $end_time = microtime(true);
+   $start_time = microtime(true);
+   oci_execute($statement);
+   $end_time = microtime(true);
 
-  print "execition time: ".round($end_time - $start_time,2)."<br>";
-  $nrows = oci_fetch_all($statement, $results);
+   print "execition time: ".round($end_time - $start_time,2)."<br>";
+   $nrows = oci_fetch_all($statement, $results);
+
+   $sqlids = array();
+   foreach($results['SQL_ID'] as $key=>$val) {
+      $sqlids[$val] = true;
+   }
+
+   $sqlids = array_keys($sqlids);
+   $sqlid_list = '';
+
+   foreach ($sqlids as $key=>$sqlid) {
+      $sqlid_list .= "'" . $sqlid ."'," ;
+   }
+
+   $sqlid_list = rtrim($sqlid_list, ",");
+
+   if ($sqlid_list === '') {
+      exit;
+   }
+
+   $query = <<<SQL
+SELECT sql_id,
+       SUM(executions_delta) executions,
+       ROUND(SUM(s.elapsed_time_delta)/DECODE(SUM(s.executions_delta),0,1,SUM(s.executions_delta))/1e6, 2) avg_time
+  FROM dba_hist_sqlstat s
+ WHERE sql_id IN ({$sqlid_list})
+   AND snap_id > {$min_snap_id}
+   AND snap_id < {$max_snap_id}
+   AND dbid = {$_POST['dbid']}
+   AND instance_number = 1
+ GROUP BY sql_id
+SQL;
+
+   $start_time = microtime(true);
+   $statement = oci_parse($connect, $query);
+   oci_execute($statement);
+   oci_fetch_all($statement, $sqlstats_results);
+
+   $sql_stats = array();
+   for ($i=0; $i<sizeof($sqlstats_results['SQL_ID']); $i++) {
+      $sql_stats[$sqlstats_results['SQL_ID'][$i]]['EXECUTIONS'] = $sqlstats_results['EXECUTIONS'][$i];
+      $sql_stats[$sqlstats_results['SQL_ID'][$i]]['AVG_TIME'] = $sqlstats_results['AVG_TIME'][$i];
+   }
+
+   // print "<pre>";
+   // print_r($sql_stats);
+   // print "</pre>";
+
+   $end_time = microtime(true);
+
+   print "execition time: ".round($end_time - $start_time,2)."<br>";
+
+   $query = <<<SQL
+SELECT distinct sql_id, dbms_lob.substr(sql_text,1000,1) sql_text
+  FROM dba_hist_sqltext
+ WHERE sql_id IN ({$sqlid_list})
+   AND dbid = {$_POST['dbid']}
+SQL;
+
+   $start_time = microtime(true);
+   $statement = oci_parse($connect, $query);
+   oci_execute($statement);
+   oci_fetch_all($statement, $sql_text_results);
+
+   $sql_text = array();
+   for ($i=0; $i<sizeof($sql_text_results['SQL_TEXT']); $i++) {
+      $sql_text[$sql_text_results['SQL_ID'][$i]]['SQL_TEXT'] = $sql_text_results['SQL_TEXT'][$i];
+   }
+
+   //  print "<pre>";
+   //  print_r($sql_text);
+   //  print "</pre>";
+
+   $end_time = microtime(true);
+
+   print "execition time: ".round($end_time - $start_time,2)."<br>";
 
   $top = array();
   for ($i=0; $i<sizeof($results["N"]); $i++) {
      if ($_POST['type'] === 'top-sql') {
-        //$top[$results["SQL_ID"][$i]]["TEXT"] = $results["SQL_TEXT"][$i];
+        $top[$results["SQL_ID"][$i]]["TEXT"] = $sql_text[$results["SQL_ID"][$i]]['SQL_TEXT'];
         $top[$results["SQL_ID"][$i]]["SQL_ID"] = $results["SQL_ID"][$i];
         $top[$results["SQL_ID"][$i]]["SQL_OPCODE"] = $results["SQL_OPCODE"][$i];
-        //$top[$results["SQL_ID"][$i]]["AVG_TIME"] = $results["AVG_TIME"][$i];
-        //$top[$results["SQL_ID"][$i]]["EXECUTIONS"] = $results["EXECUTIONS"][$i];
+        $top[$results["SQL_ID"][$i]]["AVG_TIME"] = $sql_stats[$results["SQL_ID"][$i]]["AVG_TIME"];
+        $top[$results["SQL_ID"][$i]]["EXECUTIONS"] = $sql_stats[$results["SQL_ID"][$i]]["EXECUTIONS"];;
         $top[$results["SQL_ID"][$i]]["PERCENT_TOTAL"] = $results["N"][$i]/$sum_activity*100;
         $top[$results["SQL_ID"][$i]]["WAIT_CLASS"][$results["WAIT_CLASS"][$i]] = $results["PERCENT"][$i];
      } elseif ($_POST['type'] === 'top-session') {
@@ -219,7 +294,7 @@ SQL;
      print "<tr>";
 
      if ($_POST['type'] === 'top-sql') {
-        print "<td><a href='#' title='"./*htmlspecialchars($position["TEXT"]) .*/"'>".$position["SQL_ID"] . "</a>&nbsp;</td>";
+        print "<td><a href='#' title='".htmlspecialchars($position["TEXT"]) ."'>".$position["SQL_ID"] . "</a>&nbsp;</td>";
      } elseif ($_POST['type'] === 'top-session') {
         print "<td>".$position["SESSION_ID"] . "</td>";
      }
@@ -237,8 +312,8 @@ SQL;
 
      if ($_POST['type'] === 'top-sql') {
         print "<td nowrap align='left'>".get_sqltype($position["SQL_OPCODE"]) . "</td>";
-        print "<td nowrap align='right'>"/*. $position["EXECUTIONS"] */. "</td>";
-        print "<td nowrap align='right'>"./* number_format(round($position["AVG_TIME"],4),2,'.','') .*/ "s</td>";
+        print "<td nowrap align='right'>". $position["EXECUTIONS"] . "</td>";
+        print "<td nowrap align='right'>". number_format(round($position["AVG_TIME"],4),2,'.','') . "s</td>";
      } elseif ($_POST['type'] === 'top-session') {
         print "<td nowrap>". $position["USERNAME"] . "</td>";
         print "<td nowrap>". $position["PROGRAM"] . "</td>";
