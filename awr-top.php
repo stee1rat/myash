@@ -52,39 +52,7 @@ SQL;
 
    $sum_activity = $results['ACTIVITY'][0];
 
-  //if ($_POST['type'] === 'top-sql') {
-  $query = <<<SQL
-SELECT h.sql_id,h.sql_opcode,h.n,h.wait_class,h.percent,dbms_lob.substr(t.sql_text,1,1000) sql_text,sum(executions_delta) executions,
-   round(sum(elapsed_time_total)/decode(sum(executions_total),0,1,sum(executions_total))/1e6,5) avg_time
- FROM (SELECT h1.sql_id, h1.sql_opcode, NVL(h2.{$query_mod2},'CPU') wait_class, round(Count(*)/:sum_activity*100,2) PERCENT, n
-      FROM (SELECT *
-              FROM (SELECT sql_id, sql_opcode, count(*) n
-                      FROM dba_hist_active_sess_history
-                     WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-                       AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
-                       AND dbid = :dbid
-                       AND instance_number = 1
-                       AND sql_id IS NOT NULL {$query_mod1}
-                     GROUP BY sql_id, sql_opcode
-                     ORDER BY 3 DESC)
-             WHERE rownum <= 10 ) h1,
-           dba_hist_active_sess_history h2
-      WHERE h1.sql_id = h2.sql_id {$query_mod1}
-        AND sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-        AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
-        AND dbid = :dbid
-        AND instance_number = 1
-      GROUP BY h1.sql_id, h1.sql_opcode, nvl(h2.{$query_mod2},'CPU'), n) h,
-   dba_hist_sqlstat s,
-   dba_hist_sqltext t
-WHERE s.sql_id (+) = h.sql_id
-  AND s.sql_id = h.sql_id
-  and s.snap_id between :min_snap_id and :max_snap_id
-    AND s.dbid = :dbid
-    AND s.instance_number = 1
-GROUP BY h.sql_id, h.sql_opcode, h.n, h.wait_class, h.PERCENT, dbms_lob.substr(t.sql_text,1,1000)
-ORDER BY n DESC, sql_id DESC
-SQL;
+  if ($_POST['type'] === 'top-sql') {
 
 $query = <<<SQL
 SELECT h1.sql_id, h1.sql_opcode, NVL(h2.{$query_mod2},'CPU') wait_class, round(Count(*)/:sum_activity*100,2) PERCENT, n
@@ -112,90 +80,86 @@ SELECT h1.sql_id, h1.sql_opcode, NVL(h2.{$query_mod2},'CPU') wait_class, round(C
  GROUP BY h1.sql_id, h1.sql_opcode, nvl(h2.{$query_mod2},'CPU'), n
  order by n desc
 SQL;
-//  }
 
-/*  if ($_POST['type'] === 'top-session') {
-  $query = <<<SQL
-SELECT h.*, u.username
- FROM (SELECT h1.session_id || ',' ||  h1.session_serial# session_id, h2.program, nvl(h2.{$query_mod2},'CPU') wait_class,
-           user_id, round(count(*)/:sum_activity*100,2) PERCENT, n
-      FROM (SELECT *
-              FROM (SELECT session_id, session_serial#, Count(*) n
-                      FROM v\$active_session_history
-                     WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-                       AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS'){$query_mod1}
-                     GROUP BY session_id, session_serial#
-                     ORDER BY 3 DESC)
-             WHERE rownum <= 10 ) h1,
-           v\$active_session_history h2
-     WHERE h1.session_id = h2.session_id
-      AND h1.session_serial# = h2.session_serial#
-      AND sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-      AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS'){$query_mod1}
-     GROUP BY h1.session_id, h1.session_serial#, h2.program, nvl(h2.{$query_mod2},'CPU'), n, user_id) h,
-  dba_users u
-WHERE u.user_id = h.user_id
-ORDER BY n DESC, session_id DESC, wait_class DESC
-SQL;
-  }*/
-
-   $start_time = microtime(true);
-
-  $statement = oci_parse($connect, $query);
-
-  oci_bind_by_name($statement, ':dbid', $_POST['dbid']);
-  oci_bind_by_name($statement, ':min_snap_id', $min_snap_id, -1, OCI_B_INT);
-  oci_bind_by_name($statement, ':max_snap_id', $max_snap_id, -1, OCI_B_INT);
-  oci_bind_by_name($statement, ":start_date", $start_date);
-  oci_bind_by_name($statement, ":end_date", $end_date);
-  oci_bind_by_name($statement, ":sum_activity", $sum_activity);
-
-   // $sql = str_replace(':dbid', $_POST['dbid'], $query);
-   // $sql = str_replace(':min_snap_id', $min_snap_id, $sql);
-   // $sql = str_replace(':max_snap_id', $max_snap_id, $sql);
-   // $sql = str_replace(":start_date", "'".$start_date."'", $sql);
-   // $sql = str_replace(":end_date", "'".$end_date."'", $sql);
-   // $sql = str_replace(":sum_activity", $sum_activity, $sql);
-   //
-   // $statement = oci_parse($connect, $sql);
-
-  // print "dbid:" . $_POST['dbid'] . "<br>";
-  // print "min_snap_id:" .$min_snap_id . "<br>";
-  // print "max_snap_id:" .$max_snap_id . "<br>";
-  // print "start_date:" .$start_date . "<br>";
-  // print "end_date:" .$end_date . "<br>";
-  // print "sum_activity:" .$sum_activity . "<br>";
-
-   // print "<pre>";
-   // print_r($sql);
-   // print "</pre>";
-
-   $start_time = microtime(true);
-   oci_execute($statement);
-   $end_time = microtime(true);
-
-   print "execition time: ".round($end_time - $start_time,2)."<br>";
-   $nrows = oci_fetch_all($statement, $results);
-
-   $sqlids = array();
-   foreach($results['SQL_ID'] as $key=>$val) {
-      $sqlids[$val] = true;
-   }
-
-   $sqlids = array_keys($sqlids);
-   $sqlid_list = '';
-
-   foreach ($sqlids as $key=>$sqlid) {
-      $sqlid_list .= "'" . $sqlid ."'," ;
-   }
-
-   $sqlid_list = rtrim($sqlid_list, ",");
-
-   if ($sqlid_list === '') {
-      exit;
-   }
+   } else if ($_POST['type'] === 'top-session') {
 
    $query = <<<SQL
+SELECT h.*, nvl(u.username,'USER_ID=' ||h.user_id) username
+ FROM (SELECT h1.session_id || ',' ||  h1.session_serial# session_id, h2.program, nvl(h2.{$query_mod2},'CPU') wait_class,
+           user_id, round(count(*)/:sum_activity*100,2) PERCENT, n
+  FROM (SELECT *
+          FROM (SELECT session_id, session_serial#, count(*) n
+                  FROM dba_hist_active_sess_history
+                 WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
+                   AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
+                   AND snap_id > :min_snap_id
+                   AND snap_id < :max_snap_id
+                   AND dbid = :dbid
+                   AND instance_number = 1 {$query_mod1}
+                 GROUP BY session_id, session_serial#
+                 ORDER BY 3 DESC)
+         WHERE rownum <= 10 ) h1,
+       dba_hist_active_sess_history h2
+ WHERE h1.session_id = h2.session_id
+   AND h1.session_serial# = h2.session_serial#
+   AND sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
+   AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
+   AND snap_id > :min_snap_id
+   AND snap_id < :max_snap_id
+   AND dbid = :dbid
+   AND instance_number = 1 {$query_mod1}
+ GROUP BY h1.session_id, h1.session_serial#, h2.program, nvl(h2.{$query_mod2},'CPU'), n, user_id) h
+  LEFT JOIN dba_users u
+    ON u.user_id = h.user_id
+ORDER BY n DESC, session_id DESC, wait_class DESC
+SQL;
+
+  }
+
+   $start_time = microtime(true);
+
+  // $statement = oci_parse($connect, $query);
+  //
+  // oci_bind_by_name($statement, ':dbid', $_POST['dbid']);
+  // oci_bind_by_name($statement, ':min_snap_id', $min_snap_id, -1, OCI_B_INT);
+  // oci_bind_by_name($statement, ':max_snap_id', $max_snap_id, -1, OCI_B_INT);
+  // oci_bind_by_name($statement, ":start_date", $start_date);
+  // oci_bind_by_name($statement, ":end_date", $end_date);
+  // oci_bind_by_name($statement, ":sum_activity", $sum_activity);
+
+   $sql = str_replace(':dbid', $_POST['dbid'], $query);
+   $sql = str_replace(':min_snap_id', $min_snap_id, $sql);
+   $sql = str_replace(':max_snap_id', $max_snap_id, $sql);
+   $sql = str_replace(':start_date', "'".$start_date."'", $sql);
+   $sql = str_replace(':end_date', "'".$end_date."'", $sql);
+   $sql = str_replace(':sum_activity', $sum_activity, $sql);
+
+   $statement = oci_parse($connect, $sql);
+
+   oci_execute($statement);
+   oci_fetch_all($statement, $results);
+
+   if ($_POST['type'] === 'top-sql') {
+
+      $sqlids = array();
+      foreach($results['SQL_ID'] as $key=>$val) {
+         $sqlids[$val] = true;
+      }
+
+      $sqlids = array_keys($sqlids);
+      $sqlid_list = '';
+
+      foreach ($sqlids as $key=>$sqlid) {
+         $sqlid_list .= "'" . $sqlid ."'," ;
+      }
+
+      $sqlid_list = rtrim($sqlid_list, ",");
+
+      if ($sqlid_list === '') {
+         exit;
+      }
+
+      $query = <<<SQL
 SELECT sql_id,
        SUM(executions_delta) executions,
        ROUND(SUM(s.elapsed_time_delta)/DECODE(SUM(s.executions_delta),0,1,SUM(s.executions_delta))/1e6, 2) avg_time
@@ -208,49 +172,39 @@ SELECT sql_id,
  GROUP BY sql_id
 SQL;
 
-   $start_time = microtime(true);
-   $statement = oci_parse($connect, $query);
-   oci_execute($statement);
-   oci_fetch_all($statement, $sqlstats_results);
+      $statement = oci_parse($connect, $query);
+      oci_execute($statement);
+      oci_fetch_all($statement, $sqlstats_results);
 
-   $sql_stats = array();
-   for ($i=0; $i<sizeof($sqlstats_results['SQL_ID']); $i++) {
-      $sql_stats[$sqlstats_results['SQL_ID'][$i]]['EXECUTIONS'] = $sqlstats_results['EXECUTIONS'][$i];
-      $sql_stats[$sqlstats_results['SQL_ID'][$i]]['AVG_TIME'] = $sqlstats_results['AVG_TIME'][$i];
-   }
+      $sql_stats = array();
+      for ($i=0; $i<sizeof($sqlstats_results['SQL_ID']); $i++) {
+         $sql_stats[$sqlstats_results['SQL_ID'][$i]]['EXECUTIONS'] = $sqlstats_results['EXECUTIONS'][$i];
+         $sql_stats[$sqlstats_results['SQL_ID'][$i]]['AVG_TIME'] = $sqlstats_results['AVG_TIME'][$i];
+      }
 
-   // print "<pre>";
-   // print_r($sql_stats);
-   // print "</pre>";
-
-   $end_time = microtime(true);
-
-   print "execition time: ".round($end_time - $start_time,2)."<br>";
-
-   $query = <<<SQL
+      $query = <<<SQL
 SELECT distinct sql_id, dbms_lob.substr(sql_text,1000,1) sql_text
   FROM dba_hist_sqltext
  WHERE sql_id IN ({$sqlid_list})
    AND dbid = {$_POST['dbid']}
 SQL;
 
-   $start_time = microtime(true);
-   $statement = oci_parse($connect, $query);
-   oci_execute($statement);
-   oci_fetch_all($statement, $sql_text_results);
+      $statement = oci_parse($connect, $query);
+      oci_execute($statement);
+      oci_fetch_all($statement, $sql_text_results);
 
-   $sql_text = array();
-   for ($i=0; $i<sizeof($sql_text_results['SQL_TEXT']); $i++) {
-      $sql_text[$sql_text_results['SQL_ID'][$i]]['SQL_TEXT'] = $sql_text_results['SQL_TEXT'][$i];
+      $sql_text = array();
+      for ($i=0; $i<sizeof($sql_text_results['SQL_TEXT']); $i++) {
+         $sql_text[$sql_text_results['SQL_ID'][$i]]['SQL_TEXT'] = $sql_text_results['SQL_TEXT'][$i];
+      }
    }
 
-   //  print "<pre>";
-   //  print_r($sql_text);
-   //  print "</pre>";
-
-   $end_time = microtime(true);
-
-   print "execition time: ".round($end_time - $start_time,2)."<br>";
+   print "<pre>";
+   print_r($sql_text);
+   print "</pre>";
+   if (sizeof($results["N"]) <= 0) {
+      exit;
+   }
 
   $top = array();
   for ($i=0; $i<sizeof($results["N"]); $i++) {
@@ -323,6 +277,7 @@ SQL;
   print "</table>";
 
 
+  $end_time = microtime(true);
 
   print "<div align='right'><font style='font-family: Tahoma,Verdana,Helvetica,sans-serif;font-size:9px' color='gray'>Total Sample Count: $sum_activity, Returned in: ".round($end_time - $start_time,2) . "s</font></div>";
 
