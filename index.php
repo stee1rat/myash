@@ -22,7 +22,9 @@
          }
 
          function topTable(name, minDate, maxDate, waitClass) {
+
             eventColors = {};
+
             for (var i in chart.legend.allItems) {
                eventColors[chart.legend.allItems[i]['name']] = chart.legend.allItems[i]['color'];
             }
@@ -129,8 +131,14 @@
 
                clear();
 
-               minDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', chart.xAxis[0].max - 5*60*1000);
-               maxDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', chart.xAxis[0].max);
+               if ($('#historical').prop('checked')) {
+                  selectedInterval = 120;
+               } else {
+                  selectedInterval = 5;
+               }
+
+               minDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', json.maxDate - selectedInterval*60*1000);
+               maxDate = Highcharts.dateFormat('%d.%m.%Y %H:%M:%S', json.maxDate);
 
                $('#selected-interval').html('Selected interval: ' + minDate + ' to ' + maxDate);
                $('#instance-name').html(json.instance);

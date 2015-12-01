@@ -18,7 +18,7 @@
 SELECT count(*) activity
   FROM v\$active_session_history
  WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-   AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS') {$query_mod3}
+   AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS') {$query_mod3} {$query_mod1}
 SQL;
 
    $statement = oci_parse($connect, $query);

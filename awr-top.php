@@ -38,7 +38,7 @@ SELECT count(*) activity
   FROM dba_hist_active_sess_history
  WHERE snap_id between :min_snap_id and :max_snap_id
    AND dbid = :dbid
-   AND instance_number = 1 {$query_mod3}
+   AND instance_number = 1 {$query_mod3} {$query_mod1}
 SQL;
 
    $statement = oci_parse($connect, $query);
@@ -199,86 +199,94 @@ SQL;
       }
    }
 
-   print "<pre>";
-   print_r($sql_text);
-   print "</pre>";
    if (sizeof($results["N"]) <= 0) {
       exit;
    }
 
-  $top = array();
-  for ($i=0; $i<sizeof($results["N"]); $i++) {
-     if ($_POST['type'] === 'top-sql') {
-        $top[$results["SQL_ID"][$i]]["TEXT"] = $sql_text[$results["SQL_ID"][$i]]['SQL_TEXT'];
-        $top[$results["SQL_ID"][$i]]["SQL_ID"] = $results["SQL_ID"][$i];
-        $top[$results["SQL_ID"][$i]]["SQL_OPCODE"] = $results["SQL_OPCODE"][$i];
-        $top[$results["SQL_ID"][$i]]["AVG_TIME"] = $sql_stats[$results["SQL_ID"][$i]]["AVG_TIME"];
-        $top[$results["SQL_ID"][$i]]["EXECUTIONS"] = $sql_stats[$results["SQL_ID"][$i]]["EXECUTIONS"];;
-        $top[$results["SQL_ID"][$i]]["PERCENT_TOTAL"] = $results["N"][$i]/$sum_activity*100;
-        $top[$results["SQL_ID"][$i]]["WAIT_CLASS"][$results["WAIT_CLASS"][$i]] = $results["PERCENT"][$i];
-     } elseif ($_POST['type'] === 'top-session') {
-        $top[$results["SESSION_ID"][$i]]["PROGRAM"] = $results["PROGRAM"][$i];
-        $top[$results["SESSION_ID"][$i]]["SESSION_ID"] = $results["SESSION_ID"][$i];
-        $top[$results["SESSION_ID"][$i]]["USERNAME"] = $results["USERNAME"][$i];
-        $top[$results["SESSION_ID"][$i]]["PERCENT_TOTAL"] = $results["N"][$i]/$sum_activity*100;
-        $top[$results["SESSION_ID"][$i]]["WAIT_CLASS"][$results["WAIT_CLASS"][$i]] = $results["PERCENT"][$i];
-     }
-  }
+   $top = array();
+   for ($i=0; $i<sizeof($results["N"]); $i++) {
+      if ($_POST['type'] === 'top-sql') {
+         if (isset($sql_text[$results["SQL_ID"][$i]]['SQL_TEXT'])) {
+            $top[$results["SQL_ID"][$i]]["TEXT"] = $sql_text[$results["SQL_ID"][$i]]['SQL_TEXT'];
+         } else {
+            $top[$results["SQL_ID"][$i]]["TEXT"] = '';
+         }
+         $top[$results["SQL_ID"][$i]]["SQL_ID"] = $results["SQL_ID"][$i];
+         $top[$results["SQL_ID"][$i]]["SQL_OPCODE"] = $results["SQL_OPCODE"][$i];
 
-  print "<table class='output'>";
+         if (isset($sql_stats[$results["SQL_ID"][$i]])) {
+            $top[$results["SQL_ID"][$i]]["AVG_TIME"] = $sql_stats[$results["SQL_ID"][$i]]["AVG_TIME"];
+            $top[$results["SQL_ID"][$i]]["EXECUTIONS"] = $sql_stats[$results["SQL_ID"][$i]]["EXECUTIONS"];;
+         } else {
+            $top[$results["SQL_ID"][$i]]["AVG_TIME"] = 'unavailable';
+            $top[$results["SQL_ID"][$i]]["EXECUTIONS"] = 'unavailable';
+         }
 
-  // Table headers
-  print "<thead><tr>";
-  if ($_POST['type'] === 'top-sql') {
-     print "<th align='left'>SQL ID</th>";
-     print "<th width='150px' align='left'>Activity</th>";
-     print "<th align='left' nowrap>SQL Type</th>";
-     print "<th align='left' nowrap>&nbsp;&nbsp;Executions</th>";
-     print "<th align='left' nowrap>&nbsp;&nbsp;Average Time</th>";
-  } elseif ($_POST['type'] === 'top-session') {
-     print "<th align='left' nowrap>SID,Serial#&nbsp;&nbsp;</th>";
-     print "<th width='150px' align='left'>Activity</th>";
-     print "<th align='left'>Username&nbsp;&nbsp;</th>";
-     print "<th align='left'>Program</th>";
-  }
-  print "</tr></thead>";
+         $top[$results["SQL_ID"][$i]]["PERCENT_TOTAL"] = $results["N"][$i]/$sum_activity*100;
+         $top[$results["SQL_ID"][$i]]["WAIT_CLASS"][$results["WAIT_CLASS"][$i]] = $results["PERCENT"][$i];
+      } elseif ($_POST['type'] === 'top-session') {
+         $top[$results["SESSION_ID"][$i]]["PROGRAM"] = $results["PROGRAM"][$i];
+         $top[$results["SESSION_ID"][$i]]["SESSION_ID"] = $results["SESSION_ID"][$i];
+         $top[$results["SESSION_ID"][$i]]["USERNAME"] = $results["USERNAME"][$i];
+         $top[$results["SESSION_ID"][$i]]["PERCENT_TOTAL"] = $results["N"][$i]/$sum_activity*100;
+         $top[$results["SESSION_ID"][$i]]["WAIT_CLASS"][$results["WAIT_CLASS"][$i]] = $results["PERCENT"][$i];
+      }
+   }
 
-  // Rest of the table
-  foreach ($top as $position) {
-     print "<tr>";
+   print "<table class='output'>";
 
-     if ($_POST['type'] === 'top-sql') {
-        print "<td><a href='#' title='".htmlspecialchars($position["TEXT"]) ."'>".$position["SQL_ID"] . "</a>&nbsp;</td>";
-     } elseif ($_POST['type'] === 'top-session') {
-        print "<td>".$position["SESSION_ID"] . "</td>";
-     }
+   // Table headers
+   print "<thead><tr>";
+   if ($_POST['type'] === 'top-sql') {
+      print "<th align='left'>SQL ID</th>";
+      print "<th width='150px' align='left'>Activity</th>";
+      print "<th align='left' nowrap>SQL Type</th>";
+      print "<th align='left' nowrap>&nbsp;&nbsp;Executions</th>";
+      print "<th align='left' nowrap>&nbsp;&nbsp;Average Time</th>";
+   } elseif ($_POST['type'] === 'top-session') {
+      print "<th align='left' nowrap>SID,Serial#&nbsp;&nbsp;</th>";
+      print "<th width='150px' align='left'>Activity</th>";
+      print "<th align='left'>Username&nbsp;&nbsp;</th>";
+      print "<th align='left'>Program</th>";
+   }
+   print "</tr></thead>";
 
-     print "<td>";
-     print "<table width='100%'><tr>";
-     print "<td width='100%'>";
-     foreach ($position["WAIT_CLASS"] as $key => $value) {
-        print "<div style='background:".$_POST["eventColors"][$key].";width:$value%;float:left;'>&nbsp;</div>";
-     }
-     print "</td>";
-     print "<td><div style=''>".round($position["PERCENT_TOTAL"],2). "%</div></td>";
-     print "</td>";
-     print "</tr></table>";
+   // Rest of the table
+   foreach ($top as $position) {
+      print "<tr>";
 
-     if ($_POST['type'] === 'top-sql') {
-        print "<td nowrap align='left'>".get_sqltype($position["SQL_OPCODE"]) . "</td>";
-        print "<td nowrap align='right'>". $position["EXECUTIONS"] . "</td>";
-        print "<td nowrap align='right'>". number_format(round($position["AVG_TIME"],4),2,'.','') . "s</td>";
-     } elseif ($_POST['type'] === 'top-session') {
-        print "<td nowrap>". $position["USERNAME"] . "</td>";
-        print "<td nowrap>". $position["PROGRAM"] . "</td>";
-     }
-     print "</tr>";
-  }
-  print "</table>";
+      if ($_POST['type'] === 'top-sql') {
+         print "<td><a href='#' title='".htmlspecialchars($position["TEXT"]) ."'>".$position["SQL_ID"] . "</a>&nbsp;</td>";
+      } elseif ($_POST['type'] === 'top-session') {
+         print "<td>".$position["SESSION_ID"] . "</td>";
+      }
+
+      print "<td>";
+      print "<table width='100%'><tr>";
+      print "<td width='100%'>";
+      foreach ($position["WAIT_CLASS"] as $key => $value) {
+         print "<div style='background:".$_POST["eventColors"][$key].";width:$value%;float:left;'>&nbsp;</div>";
+      }
+      print "</td>";
+      print "<td><div style=''>".round($position["PERCENT_TOTAL"],2). "%</div></td>";
+      print "</td>";
+      print "</tr></table>";
+
+      if ($_POST['type'] === 'top-sql') {
+         print "<td nowrap align='left'>".get_sqltype($position["SQL_OPCODE"]) . "</td>";
+         print "<td nowrap align='right'>". $position["EXECUTIONS"] . "</td>";
+         print "<td nowrap align='right'>". number_format(round($position["AVG_TIME"],4),2,'.','') . "s</td>";
+      } elseif ($_POST['type'] === 'top-session') {
+         print "<td nowrap>". $position["USERNAME"] . "</td>";
+         print "<td nowrap>". $position["PROGRAM"] . "</td>";
+      }
+      print "</tr>";
+   }
+   print "</table>";
 
 
-  $end_time = microtime(true);
+   $end_time = microtime(true);
 
-  print "<div align='right'><font style='font-family: Tahoma,Verdana,Helvetica,sans-serif;font-size:9px' color='gray'>Total Sample Count: $sum_activity, Returned in: ".round($end_time - $start_time,2) . "s</font></div>";
+   print "<div align='right'><font style='font-family: Tahoma,Verdana,Helvetica,sans-serif;font-size:9px' color='gray'>Total Sample Count: $sum_activity, Returned in: ".round($end_time - $start_time,2) . "s</font></div>";
 
 ?>

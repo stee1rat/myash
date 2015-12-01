@@ -195,5 +195,15 @@ SQL;
       $options['instance'] = $instance['INSTANCE'];
    }
 
+   $maxDate= 0;
+   foreach($history as $date => $value){
+     $curDate = strtotime($date);
+     if ($curDate > $maxDate) {
+        $maxDate = $curDate;
+     }
+   }
+
+   $options['maxDate'] = $maxDate*1000;
+
    print json_encode($options);
 ?>
