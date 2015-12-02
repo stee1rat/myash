@@ -1,4 +1,5 @@
 <?php
+
    // Connect to the database and define $connect variable
    include('connect.php');
 
@@ -13,10 +14,6 @@
    $start_date = $_POST['startDate'];
    $end_date   = $_POST['endDate'];
 
-   $query = 'alter session set "_optim_peek_user_binds"=false';
-   $statement = oci_parse($connect, $query);
-   oci_execute($statement);
-
    $query = <<<SQL
 SELECT min(snap_id) min_snap_id, max(snap_id) max_snap_id
   FROM dba_hist_snapshot
@@ -25,8 +22,10 @@ SELECT min(snap_id) min_snap_id, max(snap_id) max_snap_id
 SQL;
 
    $statement = oci_parse($connect, $query);
+
    oci_bind_by_name($statement, ':dbid', $_POST['dbid']);
    oci_bind_by_name($statement, ':day', $_POST['day']);
+   
    oci_execute($statement);
    oci_fetch_all($statement, $snapshots);
 
