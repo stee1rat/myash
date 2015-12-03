@@ -1,18 +1,17 @@
 <?php
-
-   // Connect to the database and define $connect variable
    include('connect.php');
-
-   // Define $query_mod1, $query_mod2 and $query_mod3 variables
    include('query-mods.php');
 
-   // Define get_sqltype function for top-sql table
    if ($_POST['type'] === 'top-sql') {
       include('sql-types.php');
    }
 
    $start_date = $_POST['startDate'];
    $end_date   = $_POST['endDate'];
+
+   $query = 'alter session set "_optim_peek_user_binds"=false';
+   $statement = oci_parse($connect, $query);
+   oci_execute($statement);
 
    $query = <<<SQL
 SELECT min(snap_id) min_snap_id, max(snap_id) max_snap_id
@@ -22,10 +21,8 @@ SELECT min(snap_id) min_snap_id, max(snap_id) max_snap_id
 SQL;
 
    $statement = oci_parse($connect, $query);
-
    oci_bind_by_name($statement, ':dbid', $_POST['dbid']);
    oci_bind_by_name($statement, ':day', $_POST['day']);
-   
    oci_execute($statement);
    oci_fetch_all($statement, $snapshots);
 
@@ -83,7 +80,7 @@ SQL;
    } else if ($_POST['type'] === 'top-session') {
 
    $query = <<<SQL
-SELECT h.*, nvl(u.username,'USER_ID=' ||h.user_id) username
+SELECT h.*, h.user_id username
  FROM (SELECT h1.session_id || ',' ||  h1.session_serial# session_id, h2.program, nvl(h2.{$query_mod2},'CPU') wait_class,
            user_id, round(count(*)/:sum_activity*100,2) PERCENT, n
   FROM (SELECT *
@@ -108,8 +105,6 @@ SELECT h.*, nvl(u.username,'USER_ID=' ||h.user_id) username
    AND dbid = :dbid
    AND instance_number = 1 {$query_mod1}
  GROUP BY h1.session_id, h1.session_serial#, h2.program, nvl(h2.{$query_mod2},'CPU'), n, user_id) h
-  LEFT JOIN dba_users u
-    ON u.user_id = h.user_id
 ORDER BY n DESC, session_id DESC, wait_class DESC
 SQL;
 
@@ -245,7 +240,7 @@ SQL;
    } elseif ($_POST['type'] === 'top-session') {
       print "<th align='left' nowrap>SID,Serial#&nbsp;&nbsp;</th>";
       print "<th width='150px' align='left'>Activity</th>";
-      print "<th align='left'>Username&nbsp;&nbsp;</th>";
+      print "<th align='left'>User ID&nbsp;&nbsp;</th>";
       print "<th align='left'>Program</th>";
    }
    print "</tr></thead>";
@@ -276,7 +271,7 @@ SQL;
          print "<td nowrap align='right'>". $position["EXECUTIONS"] . "</td>";
          print "<td nowrap align='right'>". number_format(round($position["AVG_TIME"],4),2,'.','') . "s</td>";
       } elseif ($_POST['type'] === 'top-session') {
-         print "<td nowrap>". $position["USERNAME"] . "</td>";
+         print "<td nowrap align='right'>". $position["USERNAME"] . "</td>";
          print "<td nowrap>". $position["PROGRAM"] . "</td>";
       }
       print "</tr>";

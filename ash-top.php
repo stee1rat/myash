@@ -32,7 +32,6 @@ SQL;
    $sum_activity = $results['ACTIVITY'][0];
 
    if ($_POST['type'] === 'top-sql') {
-
    $query = <<<SQL
 SELECT h.sql_id,h.sql_opcode,h.n,h.wait_class,h.percent,s.sql_text,sum(executions) executions,
     round(sum(elapsed_time)/decode(sum(executions),0,1,sum(executions))/1e6,5) avg_time
@@ -56,11 +55,9 @@ SELECT h.sql_id,h.sql_opcode,h.n,h.wait_class,h.percent,s.sql_text,sum(execution
  GROUP BY h.sql_id, h.sql_opcode, h.n, h.wait_class, h.PERCENT, s.sql_text
  ORDER BY n DESC, sql_id DESC
 SQL;
-
    }
 
    if ($_POST['type'] === 'top-session') {
-
    $query = <<<SQL
 SELECT h.*, u.username
   FROM (SELECT h1.session_id || ',' ||  h1.session_serial# session_id, h2.program, nvl(h2.{$query_mod2},'CPU') wait_class,
@@ -83,7 +80,6 @@ SELECT h.*, u.username
  WHERE u.user_id = h.user_id
  ORDER BY n DESC, session_id DESC, wait_class DESC
 SQL;
-
    }
 
    $start_time = microtime(true);
