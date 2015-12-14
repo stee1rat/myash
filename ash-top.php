@@ -1,35 +1,13 @@
- <?php
-
-   // Connect to the database and define $connect variable
+<?php
    include('connect.php');
-
-   // Define $query_mod1, $query_mod2 and $query_mod3 variables
    include('query-mods.php');
 
-   // Define get_sqltype function for top-sql table
    if ($_POST['type'] === 'top-sql') {
       include('sql-types.php');
    }
 
    $start_date = $_POST['startDate'];
    $end_date   = $_POST['endDate'];
-
-   $query = <<<SQL
-SELECT count(*) activity
-  FROM v\$active_session_history
- WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-   AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS') {$query_mod3} {$query_mod1}
-SQL;
-
-   $statement = oci_parse($connect, $query);
-
-   oci_bind_by_name($statement, ":start_date", $start_date);
-   oci_bind_by_name($statement, ":end_date", $end_date);
-
-   oci_execute($statement);
-   oci_fetch_all($statement, $results);
-
-   $sum_activity = $results['ACTIVITY'][0];
 
    if ($_POST['type'] === 'top-sql') {
 
