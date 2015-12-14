@@ -46,7 +46,8 @@ SELECT *
                    AND snap_id < :max_snap_id
                    AND dbid = :dbid
                    AND instance_number = 1
-                   AND sql_id IS NOT NULL {$query_mod1}
+                  {$query_mod1} 
+                  {$query_mod3}
                  GROUP BY sql_id, sql_opcode, NVL({$query_mod2},'CPU')
                  ORDER BY 6 DESC)
         GROUP BY sql_id, sql_opcode,  wait_class, n, total, total_by_sql_id)
@@ -87,7 +88,8 @@ SQL;
    $sql = str_replace(':max_snap_id', $max_snap_id, $sql);
    $sql = str_replace(':start_date', "'".$start_date."'", $sql);
    $sql = str_replace(':end_date', "'".$end_date."'", $sql);
-
+   $sql = removeEmptyLines($sql);   
+  
    $statement = oci_parse($connect, $sql);
    
    // oci_bind_by_name($statement, ':dbid', $_POST['dbid']);
@@ -98,8 +100,8 @@ SQL;
    // oci_bind_by_name($statement, ":sum_activity", $sum_activity);
 
    oci_execute($statement);
-   oci_fetch_all($statement, $results);
-
+   oci_fetch_all($statement, $results);   
+   
    if ($_POST['type'] === 'top-sql') {
 
       $sqlids = array();
@@ -136,13 +138,13 @@ SQL;
       $statement = oci_parse($connect, $query);
       oci_execute($statement);
       oci_fetch_all($statement, $sqlstats_results);
-
+      
       $sql_stats = array();
       for ($i=0; $i<sizeof($sqlstats_results['SQL_ID']); $i++) {
          $sql_stats[$sqlstats_results['SQL_ID'][$i]]['EXECUTIONS'] = $sqlstats_results['EXECUTIONS'][$i];
          $sql_stats[$sqlstats_results['SQL_ID'][$i]]['AVG_TIME'] = $sqlstats_results['AVG_TIME'][$i];
       }
-
+      
       $query = <<<SQL
 SELECT distinct sql_id, dbms_lob.substr(sql_text,1000,1) sql_text
   FROM dba_hist_sqltext
@@ -153,7 +155,7 @@ SQL;
       $statement = oci_parse($connect, $query);
       oci_execute($statement);
       oci_fetch_all($statement, $sql_text_results);
-
+     
       $sql_text = array();
       for ($i=0; $i<sizeof($sql_text_results['SQL_TEXT']); $i++) {
          $sql_text[$sql_text_results['SQL_ID'][$i]]['SQL_TEXT'] = $sql_text_results['SQL_TEXT'][$i];
@@ -246,7 +248,6 @@ SQL;
       print "</tr>";
    }
    print "</table>";
-
 
    $end_time = microtime(true);
 

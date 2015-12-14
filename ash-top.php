@@ -32,68 +32,74 @@ SQL;
    $sum_activity = $results['ACTIVITY'][0];
 
    if ($_POST['type'] === 'top-sql') {
-   $query = <<<SQL
-SELECT h.sql_id,h.sql_opcode,h.n,h.wait_class,h.percent,s.sql_text,sum(executions) executions,
-    round(sum(elapsed_time)/decode(sum(executions),0,1,sum(executions))/1e6,5) avg_time
-  FROM (SELECT h1.sql_id, h1.sql_opcode, NVL(h2.{$query_mod2},'CPU') wait_class, round(Count(*)/:sum_activity*100,2) PERCENT, n
-       FROM (SELECT *
-               FROM (SELECT sql_id, sql_opcode, count(*) n
-                       FROM v\$active_session_history
-                      WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-                        AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
-                        AND sql_id IS NOT NULL {$query_mod1}
-                      GROUP BY sql_id, sql_opcode
-                      ORDER BY 3 DESC)
-              WHERE rownum <= 10 ) h1,
-            v\$active_session_history h2
-       WHERE h1.sql_id = h2.sql_id {$query_mod1}
-         AND h2.sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-         AND h2.sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
-       GROUP BY h1.sql_id, h1.sql_opcode, nvl(h2.{$query_mod2},'CPU'), n) h,
-    v\$sqlarea s
- WHERE s.sql_id (+) = h.sql_id
- GROUP BY h.sql_id, h.sql_opcode, h.n, h.wait_class, h.PERCENT, s.sql_text
- ORDER BY n DESC, sql_id DESC
+
+      $query = <<<SQL
+SELECT s.sql_id, sql_opcode, wait_class, n, total, total_by_sql_id, percent, rank, 
+       dbms_lob.substr(sql_text,1000,1) sql_text, SUM(executions) executions,
+       ROUND(SUM(s.elapsed_time)/DECODE(SUM(s.executions),0,1,SUM(s.executions))/1e6, 2) avg_time
+  FROM (SELECT sql_id, sql_opcode, wait_class, n, total, total_by_sql_id,
+               round(n/total*100,2) percent,
+               dense_rank() over (order by total_by_sql_id desc, sql_id desc) as rank
+          FROM (SELECT sql_id, sql_opcode, NVL({$query_mod2},'CPU') as wait_class, count(*) n,
+                       sum(count(*)) over () total,
+                       sum(count(*)) over (partition by sql_id,sql_opcode) total_by_sql_id
+                  FROM v\$active_session_history
+                 WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
+                   AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')  
+                   {$query_mod1} 
+                   {$query_mod3} 
+                 GROUP BY sql_id, sql_opcode, NVL({$query_mod2},'CPU')
+                 ORDER BY 6 DESC)
+        GROUP BY sql_id, sql_opcode,  wait_class, n, total, total_by_sql_id) h,
+        v\$sqlstats s
+ WHERE rank <= 10
+   AND s.sql_id (+) = h.sql_id
+ GROUP BY s.sql_id, sql_opcode, wait_class, n, total, total_by_sql_id, percent, rank,  dbms_lob.substr(sql_text,1000,1)
+ ORDER BY rank   
 SQL;
+ 
    }
 
    if ($_POST['type'] === 'top-session') {
-   $query = <<<SQL
-SELECT h.*, u.username
-  FROM (SELECT h1.session_id || ',' ||  h1.session_serial# session_id, h2.program, nvl(h2.{$query_mod2},'CPU') wait_class,
-            user_id, round(count(*)/:sum_activity*100,2) PERCENT, n
-       FROM (SELECT *
-               FROM (SELECT session_id, session_serial#, Count(*) n
-                       FROM v\$active_session_history
-                      WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-                        AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS'){$query_mod1}
-                      GROUP BY session_id, session_serial#
-                      ORDER BY 3 DESC)
-              WHERE rownum <= 10 ) h1,
-            v\$active_session_history h2
-      WHERE h1.session_id = h2.session_id
-        AND h1.session_serial# = h2.session_serial#
-        AND sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
-        AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS'){$query_mod1}
-      GROUP BY h1.session_id, h1.session_serial#, h2.program, nvl(h2.{$query_mod2},'CPU'), n, user_id) h,
-   dba_users u
- WHERE u.user_id = h.user_id
- ORDER BY n DESC, session_id DESC, wait_class DESC
-SQL;
-   }
 
+      $query = <<<SQL
+SELECT h.*, u.username
+FROM (SELECT session_id, program, wait_class, user_id, n, total, total_by_sid,
+            round(n/total*100,2) percent,
+            dense_rank() over (order by total_by_sid desc, session_id desc) as rank
+       FROM (SELECT session_id || ',' || session_serial# session_id, 
+                    program, nvl({$query_mod2},'CPU') wait_class, user_id, count(*) n,
+                    sum(count(*)) over () total,
+                    sum(count(*)) over (partition by session_id  || ',' ||  session_serial#) total_by_sid
+               FROM v\$active_session_history
+              WHERE sample_time > to_date(:start_date, 'DD.MM.YYYY HH24:MI:SS')
+                AND sample_time < to_date(:end_date, 'DD.MM.YYYY HH24:MI:SS')
+                {$query_mod1}
+              GROUP BY session_id || ',' || session_serial#, program, nvl({$query_mod2},'CPU'), user_id
+              ORDER BY 7 desc, 1))h,
+      dba_users u
+WHERE h.user_id = u.user_id and rank <= 10
+ORDER BY rank
+SQL;
+
+   }   
+
+   $query = removeEmptyLines($query);
+   
    $start_time = microtime(true);
 
    $statement = oci_parse($connect, $query);
-
    oci_bind_by_name($statement, ":start_date", $start_date);
    oci_bind_by_name($statement, ":end_date", $end_date);
-   oci_bind_by_name($statement, ":sum_activity", $sum_activity);
-
    oci_execute($statement);
+   oci_fetch_all($statement, $results);
 
-   $nrows = oci_fetch_all($statement, $results);
-
+   if (sizeof($results["N"]) <= 0) {
+      exit;
+   } else {
+      $sum_activity = $results["TOTAL"][0];
+   }
+   
    $top = array();
    for ($i=0; $i<sizeof($results["N"]); $i++) {
       if ($_POST['type'] === 'top-sql') {
