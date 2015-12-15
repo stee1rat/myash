@@ -141,7 +141,7 @@ SQL;
          print "<td nowrap align='right'>". $position["EXECUTIONS"] . "</td>";
          print "<td nowrap align='right'>". number_format(round($position["AVG_TIME"],4),2,'.','') . "s</td>";
       } elseif ($_POST['type'] === 'top-session') {
-         print "<td nowrap>". $position["USERNAME"] . "</td>";
+         print "<td nowrap align='right'>". $position["USERNAME"] . "</td>";
          print "<td nowrap>". $position["PROGRAM"] . "</td>";
       }
       print "</tr>";
