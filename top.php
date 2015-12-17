@@ -3,7 +3,9 @@
 include('connect.php');
 include('query-mods.php');
 
-$query = <<<SQL
+if ($_POST['data'] === 'awr') {
+   
+   $query = <<<SQL
 SELECT min(snap_id) min_snap_id, max(snap_id) max_snap_id
   FROM dba_hist_snapshot
  WHERE begin_interval_time > to_date('{$_POST['startDate']}', 'DD.MM.YYYY HH24:MI:SS')
@@ -11,18 +13,20 @@ SELECT min(snap_id) min_snap_id, max(snap_id) max_snap_id
    AND dbid = {$_POST['dbid']}
 SQL;
 
-$statement = oci_parse($connect, $query);
-oci_execute($statement);
-oci_fetch_all($statement, $snapshots);
+   $statement = oci_parse($connect, $query);
+   oci_execute($statement);
+   oci_fetch_all($statement, $snapshots);
 
-if ($snapshots["MIN_SNAP_ID"][0] === null) {   
-   exit;
+   if ($snapshots["MIN_SNAP_ID"][0] === null) {   
+      exit;
+   }
+
+   $min_snap_id = $snapshots["MIN_SNAP_ID"][0];
+   $max_snap_id = $snapshots["MAX_SNAP_ID"][0];
+   
 }
 
-$min_snap_id = $snapshots["MIN_SNAP_ID"][0];
-$max_snap_id = $snapshots["MAX_SNAP_ID"][0];
-
-if ($_POST['type'] === 'top-sql') {
+if ($_POST['type'] === 'top-sql' && $_POST['data'] === 'awr') {
 
    include('sql-types.php');
 
@@ -50,7 +54,40 @@ SELECT *
  ORDER BY rank
 SQL;
 
-} else if ($_POST['type'] === 'top-session') {
+} 
+
+if ($_POST['type'] === 'top-sql' && $_POST['data'] === 'ash') {
+
+   include('sql-types.php');
+
+   $query = <<<SQL
+SELECT s.sql_id, sql_opcode, wait_class, n, total, total_by_sql_id, percent, rank,
+       dbms_lob.substr(sql_text,1000,1) sql_text, SUM(executions) executions,
+       ROUND(SUM(s.elapsed_time)/DECODE(SUM(s.executions),0,1,SUM(s.executions))/1e6, 2) avg_time
+  FROM (SELECT sql_id, sql_opcode, wait_class, n, total, total_by_sql_id,
+               round(n/total*100,2) percent,
+               dense_rank() over (order by total_by_sql_id desc, sql_id desc) as rank
+          FROM (SELECT sql_id, sql_opcode, NVL({$query_mod2},'CPU') as wait_class, count(*) n,
+                       sum(count(*)) over () total,
+                       sum(count(*)) over (partition by sql_id,sql_opcode) total_by_sql_id
+                  FROM v\$active_session_history
+                 WHERE sample_time > to_date('{$_POST['startDate']}', 'DD.MM.YYYY HH24:MI:SS')
+                   AND sample_time < to_date('{$_POST['endDate']}', 'DD.MM.YYYY HH24:MI:SS')  
+                   {$query_mod1} 
+                   {$query_mod3} 
+                 GROUP BY sql_id, sql_opcode, NVL({$query_mod2},'CPU')
+                 ORDER BY 6 DESC)
+        GROUP BY sql_id, sql_opcode,  wait_class, n, total, total_by_sql_id) h,
+        v\$sqlstats s
+ WHERE rank <= 10
+   AND s.sql_id (+) = h.sql_id
+ GROUP BY s.sql_id, sql_opcode, wait_class, n, total, total_by_sql_id, percent, rank,  dbms_lob.substr(sql_text,1000,1)
+ ORDER BY rank   
+SQL;
+
+} 
+
+if ($_POST['type'] === 'top-session' && $_POST['data'] === 'awr') {
 
    $query = <<<SQL
 SELECT *
@@ -75,15 +112,46 @@ ORDER BY rank
 SQL;
 
 }
-$query = removeEmptyLines($query);
+
+if ($_POST['type'] === 'top-session' && $_POST['data'] === 'ash') {
+
+   $query = <<<SQL
+SELECT h.*, u.username
+FROM (SELECT session_id, program, wait_class, user_id, n, total, total_by_sid,             
+             round(n/total*100,2) percent,
+             dense_rank() over (order by total_by_sid desc, session_id desc) as rank
+       FROM (SELECT session_id || ',' || session_serial# session_id, 
+                    program, nvl({$query_mod2},'CPU') wait_class, user_id, count(*) n,
+                    sum(count(*)) over () total,
+                    sum(count(*)) over (partition by session_id  || ',' ||  session_serial#) total_by_sid
+               FROM v\$active_session_history
+              WHERE sample_time > to_date('{$_POST['startDate']}', 'DD.MM.YYYY HH24:MI:SS')
+                AND sample_time < to_date('{$_POST['endDate']}', 'DD.MM.YYYY HH24:MI:SS')
+                {$query_mod1}
+              GROUP BY session_id || ',' || session_serial#, program, nvl({$query_mod2},'CPU'), user_id
+              ORDER BY 7 desc, 1)) h,
+      dba_users u
+WHERE h.user_id = u.user_id and rank <= 10
+ORDER BY rank
+SQL;
+
+}
 
 $start_time = microtime(true);
+
+$query = removeEmptyLines($query);
 
 $statement = oci_parse($connect, $query);
 oci_execute($statement);
 oci_fetch_all($statement, $results);
 
-if ($_POST['type'] === 'top-sql') {
+if (sizeof($results["N"]) <= 0) {
+   exit;
+} 
+
+$sum_activity = $results["TOTAL"][0];
+
+if ($_POST['type'] === 'top-sql' && $_POST['data'] === 'awr') {
 
    $sqlid_list = '';
 
@@ -127,26 +195,24 @@ SQL;
    }
 }
 
-if (sizeof($results["N"]) <= 0) {
-   exit;
-} 
-
-$sum_activity = $results["TOTAL"][0];
-
 $top = array();
 for ($i=0; $i<sizeof($results["N"]); $i++) {
    if ($_POST['type'] === 'top-sql') {
       $top[$results["SQL_ID"][$i]]["SQL_ID"] = $results["SQL_ID"][$i];
       $top[$results["SQL_ID"][$i]]["SQL_OPCODE"] = $results["SQL_OPCODE"][$i];
 
-      if (isset($sqlstats[$results["SQL_ID"][$i]])) {
+      if (isset($sqlstats[$results["SQL_ID"][$i]]) && $_POST['data'] === 'awr') {
          $top[$results["SQL_ID"][$i]]["AVG_TIME"] = $sqlstats[$results["SQL_ID"][$i]]["AVG_TIME"];
          $top[$results["SQL_ID"][$i]]["EXECUTIONS"] = $sqlstats[$results["SQL_ID"][$i]]["EXECUTIONS"];
          $top[$results["SQL_ID"][$i]]["TEXT"] = $sqlstats[$results["SQL_ID"][$i]]['SQL_TEXT'];
-      } else {
+      } elseif ($_POST['data'] === 'awr') {
          $top[$results["SQL_ID"][$i]]["AVG_TIME"] = 'unavailable';
          $top[$results["SQL_ID"][$i]]["EXECUTIONS"] = 'unavailable';
          $top[$results["SQL_ID"][$i]]["TEXT"] = '';
+      } else {
+         $top[$results["SQL_ID"][$i]]["AVG_TIME"] = $results["AVG_TIME"][$i];
+         $top[$results["SQL_ID"][$i]]["EXECUTIONS"] = $results["EXECUTIONS"][$i];
+         $top[$results["SQL_ID"][$i]]["TEXT"] = $results["SQL_TEXT"][$i];
       }
 
       $top[$results["SQL_ID"][$i]]["PERCENT_TOTAL"] = $results["TOTAL_BY_SQL_ID"][$i]/$results["TOTAL"][$i]*100;
@@ -161,9 +227,8 @@ for ($i=0; $i<sizeof($results["N"]); $i++) {
 }
 
 print "<table class='output'>";
-
-// Table headers
 print "<thead><tr>";
+
 if ($_POST['type'] === 'top-sql') {
    print "<th align='left'>SQL ID</th>";
    print "<th width='150px' align='left'>Activity</th>";
@@ -173,12 +238,16 @@ if ($_POST['type'] === 'top-sql') {
 } elseif ($_POST['type'] === 'top-session') {
    print "<th align='left' nowrap>SID,Serial#&nbsp;&nbsp;</th>";
    print "<th width='150px' align='left'>Activity</th>";
-   print "<th align='left'>User ID&nbsp;&nbsp;</th>";
+   
+   if ($_POST['data'] === 'awr') {
+      print "<th align='right'>User ID&nbsp;&nbsp;</th>";
+   } else {
+      print "<th align='right'>Username&nbsp;&nbsp;</th>";
+   }
    print "<th align='left'>Program</th>";
 }
 print "</tr></thead>";
 
-// Rest of the table
 foreach ($top as $position) {
    print "<tr>";
 
