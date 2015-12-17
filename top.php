@@ -163,9 +163,9 @@ if ($_POST['type'] === 'top-sql' && $_POST['data'] === 'awr') {
 
    if ($sqlid_list === '') {
       exit;
-   } else {
-      $sqlid_list = rtrim($sqlid_list, ",");
-   }
+   } 
+   
+   $sqlid_list = rtrim($sqlid_list, ",");   
 
    $query = <<<SQL
 SELECT s.sql_id,
@@ -196,33 +196,40 @@ SQL;
 }
 
 $top = array();
-for ($i=0; $i<sizeof($results["N"]); $i++) {
-   if ($_POST['type'] === 'top-sql') {
-      $top[$results["SQL_ID"][$i]]["SQL_ID"] = $results["SQL_ID"][$i];
-      $top[$results["SQL_ID"][$i]]["SQL_OPCODE"] = $results["SQL_OPCODE"][$i];
 
-      if (isset($sqlstats[$results["SQL_ID"][$i]]) && $_POST['data'] === 'awr') {
-         $top[$results["SQL_ID"][$i]]["AVG_TIME"] = $sqlstats[$results["SQL_ID"][$i]]["AVG_TIME"];
-         $top[$results["SQL_ID"][$i]]["EXECUTIONS"] = $sqlstats[$results["SQL_ID"][$i]]["EXECUTIONS"];
-         $top[$results["SQL_ID"][$i]]["TEXT"] = $sqlstats[$results["SQL_ID"][$i]]['SQL_TEXT'];
+if ($_POST['type'] === 'top-sql') {
+   $id = 'SQL_ID';
+} else {
+   $id = 'SESSION_ID';
+}
+
+foreach ($results[$id] as $i => $val) {
+   if ($_POST['type'] === 'top-sql') {
+      $top[$val]["SQL_ID"] = $results["SQL_ID"][$i];
+      $top[$val]["SQL_OPCODE"] = $results["SQL_OPCODE"][$i];
+
+      if (isset($sqlstats[$val]) && $_POST['data'] === 'awr') {
+         $top[$val]["AVG_TIME"] = $sqlstats[$val]["AVG_TIME"];
+         $top[$val]["EXECUTIONS"] = $sqlstats[$val]["EXECUTIONS"];
+         $top[$val]["TEXT"] = $sqlstats[$val]['SQL_TEXT'];
       } elseif ($_POST['data'] === 'awr') {
-         $top[$results["SQL_ID"][$i]]["AVG_TIME"] = 'unavailable';
-         $top[$results["SQL_ID"][$i]]["EXECUTIONS"] = 'unavailable';
-         $top[$results["SQL_ID"][$i]]["TEXT"] = '';
+         $top[$val]["AVG_TIME"] = 'unavailable';
+         $top[$val]["EXECUTIONS"] = 'unavailable';
+         $top[$val]["TEXT"] = '';
       } else {
-         $top[$results["SQL_ID"][$i]]["AVG_TIME"] = $results["AVG_TIME"][$i];
-         $top[$results["SQL_ID"][$i]]["EXECUTIONS"] = $results["EXECUTIONS"][$i];
-         $top[$results["SQL_ID"][$i]]["TEXT"] = $results["SQL_TEXT"][$i];
+         $top[$val]["AVG_TIME"] = $results["AVG_TIME"][$i];
+         $top[$val]["EXECUTIONS"] = $results["EXECUTIONS"][$i];
+         $top[$val]["TEXT"] = $results["SQL_TEXT"][$i];
       }
 
-      $top[$results["SQL_ID"][$i]]["PERCENT_TOTAL"] = $results["TOTAL_BY_SQL_ID"][$i]/$results["TOTAL"][$i]*100;
-      $top[$results["SQL_ID"][$i]]["WAIT_CLASS"][$results["WAIT_CLASS"][$i]] = $results["PERCENT"][$i];
+      $top[$val]["PERCENT_TOTAL"] = $results["TOTAL_BY_SQL_ID"][$i]/$results["TOTAL"][$i]*100;
+      $top[$val]["WAIT_CLASS"][$results["WAIT_CLASS"][$i]] = $results["PERCENT"][$i];
    } elseif ($_POST['type'] === 'top-session') {
-      $top[$results["SESSION_ID"][$i]]["PROGRAM"] = $results["PROGRAM"][$i];
-      $top[$results["SESSION_ID"][$i]]["SESSION_ID"] = $results["SESSION_ID"][$i];
-      $top[$results["SESSION_ID"][$i]]["USERNAME"] = $results["USER_ID"][$i];
-      $top[$results["SESSION_ID"][$i]]["PERCENT_TOTAL"] = $results["TOTAL_BY_SID"][$i]/$results["TOTAL"][$i]*100;
-      $top[$results["SESSION_ID"][$i]]["WAIT_CLASS"][$results["WAIT_CLASS"][$i]] = $results["PERCENT"][$i];
+      $top[$val]["PROGRAM"] = $results["PROGRAM"][$i];
+      $top[$val]["SESSION_ID"] = $results["SESSION_ID"][$i];
+      $top[$val]["USERNAME"] = $results["USER_ID"][$i];
+      $top[$val]["PERCENT_TOTAL"] = $results["TOTAL_BY_SID"][$i]/$results["TOTAL"][$i]*100;
+      $top[$val]["WAIT_CLASS"][$results["WAIT_CLASS"][$i]] = $results["PERCENT"][$i];
    }
 }
 
