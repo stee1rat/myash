@@ -1,3 +1,5 @@
+<script type='text/javascript' src='jquery/jquery-2.1.4.min.js'></script>
+
 <?php
    // Connect to the database and define $connect variable
    include('connect.php');
