@@ -32,7 +32,7 @@ if ($_POST['type'] === 'top-sql' && $_POST['data'] === 'awr') {
 
    $query = <<<SQL
 SELECT *
-  FROM (SELECT sql_id, sql_opcode, wait_class, n,
+  FROM (SELECT sql_id, sql_opcode, wait_class, n, total,
                round(n/total*100,2) percent,
                total_by_sql_id/total*100 percent_total,
                dense_rank() over (order by total_by_sql_id desc, sql_id desc) as rank
@@ -62,7 +62,7 @@ if ($_POST['type'] === 'top-sql' && $_POST['data'] === 'ash') {
    include('sql-types.php');
 
    $query = <<<SQL
-SELECT s.sql_id, sql_opcode, wait_class, n,
+SELECT s.sql_id, sql_opcode, wait_class, n, total,
        total_by_sql_id/total*100 percent_total,
        percent, rank,
        dbms_lob.substr(sql_text,1000,1) sql_text, SUM(executions) executions,
@@ -94,7 +94,7 @@ if ($_POST['type'] === 'top-session' && $_POST['data'] === 'awr') {
 
    $query = <<<SQL
 SELECT *
-FROM (SELECT session_id, program, wait_class, user_id username, n,
+FROM (SELECT session_id, program, wait_class, user_id username, n, total,
             total_by_sid/total*100 percent_total,
             round(n/total*100,2) percent,
             dense_rank() over (order by total_by_sid desc, session_id desc) as rank
@@ -121,7 +121,7 @@ if ($_POST['type'] === 'top-session' && $_POST['data'] === 'ash') {
 
    $query = <<<SQL
 SELECT h.*, u.username
-FROM (SELECT session_id, program, wait_class, user_id, n,
+FROM (SELECT session_id, program, wait_class, user_id, n, total,
              total_by_sid/total*100 percent_total,
              round(n/total*100,2) percent,
              dense_rank() over (order by total_by_sid desc, session_id desc) as rank
@@ -217,9 +217,12 @@ foreach ($results[$id] as $i => $val1) {
       }
    }
    if (isset($sqlstats)) {
-      $top[$val1]["EXECUTIONS"] = $sqlstats[$val1]["EXECUTIONS"];
-      $top[$val1]["AVG_TIME"] = $sqlstats[$val1]["AVG_TIME"];
-      $top[$val1]["SQL_TEXT"] = $sqlstats[$val1]['SQL_TEXT'];
+      if (isset($sqlstats[$val1]["EXECUTIONS"])) $top[$val1]["EXECUTIONS"] = $sqlstats[$val1]["EXECUTIONS"];
+        else $top[$val1]["EXECUTIONS"] = '';
+      if (isset($sqlstats[$val1]["AVG_TIME"])) $top[$val1]["AVG_TIME"] = $sqlstats[$val1]["AVG_TIME"];
+        else $top[$val1]["AVG_TIME"] = '';
+      if (isset($sqlstats[$val1]["SQL_TEXT"])) $top[$val1]["SQL_TEXT"] = $sqlstats[$val1]['SQL_TEXT']; 
+        else $top[$val1]["SQL_TEXT"] = '';
    }
 }
 

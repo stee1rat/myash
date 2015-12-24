@@ -50,7 +50,8 @@ function availableSnapshots() {
    $.post('dbid.php', jsonData, function(data) {
       $('#day').html(data);
       if ($('#historical').prop('checked')) {
-         $('#day').trigger('change');
+         //$('#day').trigger('change');
+         plot();
       }
    });
 }
