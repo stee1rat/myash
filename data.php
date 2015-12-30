@@ -11,7 +11,7 @@ if ($_POST['data'] === 'ash') {
 
    $query = <<<SQL
 SELECT 'Connected to: ' || instance_name || '@' || host_name || ', Version: ' || version instance,
-       trunc(sysdate - 1/24,'MI') start_date
+        (sysdate - 1/24) - numtodsinterval(mod(extract(second FROM Cast(sysdate AS TIMESTAMP)), 15), 'second') start_date
   FROM v\$instance, v\$license
 SQL;
 
@@ -84,7 +84,7 @@ oci_execute($statement);
 
 $history = array();
 while (($row = oci_fetch_assoc($statement))) {
-   if ($row["WAIT_CLASS"] != 'rollup') {
+    if ($row["WAIT_CLASS"] != 'rollup') {
       $history[$row["SAMPLE_TIME"]][$row["WAIT_CLASS"]]  = $row["AVG_SES"];
 
       if (!isset($history[$row["SAMPLE_TIME"]]["Overall"])) {
@@ -98,7 +98,7 @@ while (($row = oci_fetch_assoc($statement))) {
 }
 
 foreach ($history as $date) {
-   foreach ($date as $key => $value) {
+    foreach ($date as $key => $value) {
       if ($key != 'Overall' and $key != 'AvgSess') {
          $wait_classes[$key] = 0;
       }
@@ -127,7 +127,7 @@ oci_execute($statement);
 oci_fetch_all($statement, $dates);
 
 $waits = array();
-foreach ($dates["MM"] as $date) {
+foreach ($dates["MM"] as $date) {   
    $datetime=DateTime::createFromFormat('d.m.Y H:i:s',$date);
 
    foreach($wait_classes as $wait_class => $value) {
