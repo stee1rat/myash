@@ -1,0 +1,25 @@
+{
+  "name": "myash-express",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "concurrently \"PORT=3003 node ./bin/www\" \"cd client && npm start\""
+  },
+  "dependencies": {
+    "@material-ui/core": "^4.11.0",
+    "axios": "^0.21.0",
+    "concurrently": "^3.5.1",
+    "cookie-parser": "~1.4.3",
+    "debug": "~2.6.9",
+    "express": "~4.16.0",
+    "http-errors": "~1.6.2",
+    "jade": "~1.11.0",
+    "moment": "^2.29.1",
+    "morgan": "~1.9.0",
+    "muicss": "^0.10.2",
+    "oracledb": "^5.0.0",
+    "react-highcharts": "^16.1.0",
+    "request": "^2.87.0",
+    "request-promise": "^4.2.2"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "react-hello",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "muicss": "^0.10.2",
+    "react": "^16.3.2",
+    "react-dom": "^16.3.2",
+    "react-scripts": "1.1.4"
+  },
+  "scripts": {
+    "start": "export PORT=3001 && react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
+  },
+  "proxy": "http://127.0.0.1:3003"
+}

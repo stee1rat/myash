@@ -1,0 +1,76 @@
+.status {
+//  width:100%; 
+//  margin-left: 30px;
+  margin-top: 15px;
+  margin-bottom: 8px;
+}
+.selection {
+  width:100%;
+  text-align:center;
+  margin-bottom: 15px;
+}
+.status-error {
+  color: red;
+  text-align: center;
+}
+.top-sql {
+  border-collapse: collapse;
+  border-spacing: 0;
+  empty-cells: show;
+  border: 1px solid #f8f8f8;
+  width: 40%;
+  margin-left: 30px;
+  font-size: 14px;
+  float: left;
+}
+.top-sql thead {
+  background-color: rgba(110, 122, 118, 0.2);
+  color: #000;
+  text-align: left;
+  vertical-align: bottom;
+}
+.top-sql tr {
+  white-space: nowrap;
+}
+.top-sql td {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.top-sql th:nth-child(4), th:nth-child(5) {
+  text-align: right;
+}
+.top-sql td:nth-child(4), td:nth-child(5) {
+  text-align: right;
+}
+.top-sql a {
+  text-decoration: none;
+}
+.top-sql a:visited {
+  color: #0000EE;
+}
+.connect-form {
+  text-align: center;
+  margin-bottom: 15px;
+}
+.activity-bar {
+  font-size: 12px; 
+  vertical-align: middle; 
+  margin-left: 3px;
+}
+.snapshot-selector {
+  display: inline-block;
+  float: right;
+  margin-right: 10px;
+}
+.breadcrumb {
+  float: left;  
+  text-align: left;
+  padding-top: 7px;
+  padding-left: 10px;
+}
+.controls {
+  float: right;
+  text-align: right;
+  white-space: nowrap;
+  padding-right: 10px;
+}
