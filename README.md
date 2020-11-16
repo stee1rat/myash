@@ -1,14 +1,20 @@
 # myash
-Simple Oracle ASH online viewer
+Simple Oracle ASH viewer
 
-![screenshot](https://github.com/stee1rat/myash/blob/master/screenshots/chalna_dbdpc.png?raw=true)
+## Installation
+* Clone repository
+* `npm install && npm --prefix ./client install ./client`
+* If Oracle client is not installed: download Instant Client Basic or Basic Light package from http://www.oracle.com/technetwork/topics/linuxx86-64soft-092277.html and unzip it
+* Set LD_LIBRARY_PATH environment variable, for example: `export LD_LIBRARY_PATH=/opt/oracle/instantclient_19_3:$LD_LIBRARY_PATH`
 
-Usage example:
+## Usage
+`npm start`
 
-![screenshot](https://github.com/stee1rat/myash/blob/master/screenshots/myash.gif?raw=true)
+In case you are not running the app on your localhost, you might want to edit the client/.env.development and client/package.json files, to change 127.0.0.1 to your hostname or IP.
 
-Comparison to Oracle Cloud Control 12c
+## Screenshots
+![screenshot](https://github.com/stee1rat/myash/blob/master/screenshots/image001.png?raw=true)
 
-![screenshot](https://github.com/stee1rat/myash/blob/master/screenshots/chalna_dbdpc-compare.png?raw=true)
+![screenshot](https://github.com/stee1rat/myash/blob/master/screenshots/image002.png?raw=true)
 
-![screenshot](https://github.com/stee1rat/myash/blob/master/screenshots/chalna_dbdpc-cc-compare.png?raw=true)
+![screenshot](https://github.com/stee1rat/myash/blob/master/screenshots/image002.png?raw=true)
