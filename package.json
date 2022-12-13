@@ -11,7 +11,7 @@
     "concurrently": "^5.3.0",
     "cookie-parser": "~1.4.3",
     "debug": "^4.3.1",
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "http-errors": "^1.8.0",
     "moment": "^2.29.1",
     "morgan": "^1.10.0",
